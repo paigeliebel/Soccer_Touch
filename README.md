@@ -49,7 +49,7 @@ The Rscripts built out so far are listed and described below:
   
     WikiSource: http://en.wikipedia.org/wiki/2024_National_Women%27s_Soccer_League_season
 
-
+  *FinalStandings* = dataframe that has final season stats pulled from NWSL website
 -------------------------------------------------------------------------------------------------------------
 
 # Core_Hypothesis.R
