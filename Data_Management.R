@@ -37,6 +37,6 @@ Stadiums <- read_csv(Stadiums.csv)
 
 MatchAssignments_WatchOrder <- read_csv(MatchAssignments_WatchOrder.csv)
 
-StandingsByWeek <- read_csv(StandingsByWeek.csv)
+StandingsByWeek <- read_csv(StandingsByWeek_Clean.csv)
 
 #################################################################
