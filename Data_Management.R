@@ -14,25 +14,21 @@ library(readr)
 # raters and corresponding sheets
 # Rater1 = Paige, Rater2 = Tobi, Rater3 = Simon
 
-Touch_Rater1 <- read_csv("SpreadSheets/Touch_Paige.csv")
-Touch_Rater1 <- Touch_Rater1 %>% mutate(Rater = "Rater1") #adding Rater identifier to df
-Touch_Rater2 <- read_csv("SpreadSheets/Touch_Tobi.csv")
-Touch_Rater2 <- Touch_Rater2 %>% mutate(Rater = "Rater2")
-#Touch_Rater3 <- read_csv("SpreadSheets/Touch_Simon.csv")
-#Touch_Rater3 <- Touch_Rater3 %>% mutate(Rater = "Rater3")
-Touch_Dataframes_List <- list(Touch_Rater1, Touch_Rater2) #list of touch dataframes wanted to be passed into Touches
+raters <- list(
+  Rater1 = list(touch = "Touch_Paige.csv", match = "Match_Paige.csv"),
+  Rater2 = list(touch = "Touch_Tobi.csv",  match = "Match_Tobi.csv")
+  # Rater3 = list(touch = "Touch_Simon.csv", match = "Match_Simon.csv")  # <- uncomment when ready to add Simon's data
+)
 
-Touches <- bind_rows(Touch_Dataframes_List) #Total touch df
+Touch_Dataframes_List <- map2(names(raters), raters, function(rater_name, files) { #Creates a list of data frames that are each raters csv files
+  read_csv(file.path("SpreadSheets", files$touch)) %>%
+    mutate(Rater = rater_name) #adds a column with raters name
+})
 
-Match_Rater1 <- read_csv("SpreadSheets/Match_Paige.csv")
-Match_Rater1 <- Match_Rater1 %>% mutate(Rater = "Rater1")
-Match_Rater2 <- read_csv("SpreadSheets/Match_Tobi.csv")
-Match_Rater2 <- Match_Rater2 %>% mutate(Rater = "Rater2")
-#Match_Rater3 <- read_csv("SpreadSheets/Match_Simon.csv")
-#Match_Rater3 <- Match_Rater3 %>% mutate(Rater = "Rater3")
-Match_Dataframes_List <- list(Match_Rater1, Match_Rater2) #list of match dfs wanted to be passed into Matches
-
-Matches <- bind_rows(Match_Dataframes_List) #Total match df
+Match_Dataframes_List <- map2(names(raters), raters, function(rater_name, files) {
+  read_csv(file.path("SpreadSheets", files$match)) %>%
+    mutate(Rater = rater_name)
+})
 
 ################################################################
 
@@ -136,6 +132,18 @@ clean_visibility <- function(x) {
   )
 }
 
+is_invalid_bodypart <- function(x) { #splits lists within cell to look at individual values (checks to make sure "FT, Arn" is flagged for "Arn")
+  x %>%
+    str_split(",\\s*") %>%
+    map_lgl(~ any(!.x %in% valid_body_parts))
+}
+
+is_invalid_haptic_ritual <- function(x) { #splits lists within cell to look at individual values (flags things like "CR, BF" for "BF" which is not a valid haptic ritual)
+  x %>%
+    str_split(",\\s*") %>%
+    map_lgl(~ any(!.x %in% valid_hapticrituals))
+}
+
 #Now applying these functions to corresponding data frames and columns
 
 Touches <- Touches %>%
@@ -149,6 +157,36 @@ Touches <- Touches %>%
     Visibility = clean_visibility(Visibility)
   )
 
+#Function to let us know where the invalid feature occurs. Output is a new column that contains the column location of the error
+get_invalid_fields <- function(row) {
+  invalid_fields <- c()
+  
+  if (!(row$Reciprocal %in% valid_reciprocal)) {
+    invalid_fields <- c(invalid_fields, "Reciprocal")
+  }
+  
+  if (is_invalid_bodypart(row$ToucherBodyPart)) {
+    invalid_fields <- c(invalid_fields, "ToucherBodyPart")
+  }
+  
+  if (is_invalid_bodypart(row$ToucheeBodyPart)) {
+    invalid_fields <- c(invalid_fields, "ToucheeBodyPart")
+  }
+  
+  if (!(row$Situation %in% valid_situations)) {
+    invalid_fields <- c(invalid_fields, "Situation")
+  }
+  
+  if (is_invalid_haptic_ritual(row$HapticRitual)) {
+    invalid_fields <- c(invalid_fields, "HapticRitual")
+  }
+  
+  if (!(row$TouchAction %in% valid_touch_actions)) {
+    invalid_fields <- c(invalid_fields, "TouchAction")
+  }
+  
+  paste(invalid_fields, collapse = ", ")
+}
 ################################################################
 
 #Troubleshooting: Looking at each column and checking values to look for human error while inputting data during collection
@@ -174,12 +212,23 @@ Touches_invalid <- Touches %>%
       is_invalid_bodypart(ToucherBodyPart) |
       is_invalid_bodypart(ToucheeBodyPart) |
       !(Situation %in% valid_situations) |
-      !(HapticRitual %in% valid_rituals) |
+      is_invalid_haptic_ritual(HapticRitual) |
       !(TouchAction %in% valid_touch_actions)
   )
 
-Touches_invalid_rater1 <- filter(Touches_invalid, Rater == "Rater1")
-Touches_invalid_rater2 <- filter(Touches_invalid, Rater == "Rater2")
-#Touches_invalid_rater3 <- filter(Touches_invalid, Rater == "Rater3")
-  
+Touches_invalid_by_rater <- split(Touches_invalid, Touches_invalid$Rater) #split by rater
+
+Touches_invalid_labeled <- map(Touches_invalid_by_rater, function(df) { #apply get_invalid_fields() to each row in each rater's dataframe
+  df %>%
+    rowwise() %>%
+    mutate(Invalid_Fields = get_invalid_fields(cur_data())) %>%
+    ungroup()
+})
+
+Touches_invalid_rater1 <- Touches_invalid_labeled[["Rater1"]]
+Touches_invalid_rater2 <- Touches_invalid_labeled[["Rater2"]]
+#Touches_invalid_rater3 <- Touches_invalid_labeled[["Rater3"]]
+
+
+
 
