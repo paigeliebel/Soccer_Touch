@@ -1,0 +1,183 @@
+SeasonMatchNumber,Day,Date,City,LocalKickOffTime,MatchAttendance,Temperature,Weather,HomeTeamName,Home_TeamID,HomeTeam_MatchID,AwayTeamName,Away_TeamID,AwayTeam_MatchID,First_or_Second_Meeting,Stadium,Rater
+001,Saturday,16/03/24,"Kansas City, Missouri",12:00,11500,61,Partly Cloudy,Kansas City Current,05,0501,Portland Thorns FC,10,1001,First,CPKC Stadium,Simon
+002,Saturday,16/03/24,"Louisville, Kentucky",16:00,6123,63,Mostly Cloudy,Racing Louisville FC,11,1101,Orlando Pride,09,0901,First,Lynn Family Stadium,Paige
+003,Saturday,16/03/24,"Cary, North Carolina",19:00,5878,70,Partly Cloudy,North Carolina Courage,07,0701,Houston Dash,04,0401,First,First Horizon Stadium at WakeMed Soccer Park,Paige
+004,Saturday,16/03/24,"Sandy, Utah",18:30,20370,56,Fair,Utah Royals FC,13,1301,Chicago Red Stars,03,0301,First,America First Field,Paige
+005,Sunday,17/03/24,"Seattle, Washington",15:00,8557,69,Fair,Seattle Reign FC,08,0801,Washington Spirit,14,1401,First,Lumen Field,Jonas
+006,Sunday,17/03/24,"Los Angeles, California",16:30,22000,61,Partly Cloudy,Angel City FC,01,0101,Bay FC,02,0201,First,BMO Stadium,Jonas
+007,Friday,22/03/24,"Orlando, Florida",20:00,6306,70,Light Rain,Orlando Pride,09,0902,Angel City FC,01,0102,First,Inter&Co Stadium,Simon
+008,Friday,22/03/24,"Sandy, Utah",19:30,8161,61,Cloudy,Utah Royals FC,13,1302,North Carolina Courage,07,0702,First,America First Field,Paige
+009,Saturday,23/03/24,"Bridgeview, Illinois",15:00,5494,38,Fair,Chicago Red Stars,03,0302,Seattle Reign FC,08,0802,First,SeatGeek Stadium,Paige
+010,Saturday,23/03/24,"Washington, D.C.",18:30,11734,48,Mostly Cloudy / Windy,Washington Spirit,14,1402,Bay FC,02,0202,First,Audi Field,Simon
+011,Sunday,24/03/24,"Houston, Texas",,,,,Houston Dash,04,0402,Racing Louisville FC,11,1102,First,Shell Energy Stadium,Jonas
+012,Saturday,23/03/24,"San Diego, California",19:00,32066,59,Mostly Cloudy,San Diego Wave FC,12,1201,Kansas City Current,05,0502,First,Snapdragon Stadium,Simon
+013,Sunday,24/03/24,"Portland, Oregon",16:00,19857,55,Light Rain,Portland Thorns FC,10,1002,NJ/NY Gotham FC,06,0601,First,Providence Park,Jonas
+014,Friday,29/03/24,"Orlando, Florida",19:00,5586,74,Fair,Orlando Pride,09,0903,Chicago Red Stars,03,0303,First,Inter&Co Stadium,Tobias
+015,Friday,29/03/24,"San Diego, California",18:00,16746,61,Partly Cloudy,San Diego Wave FC,12,1202,Seattle Reign FC,08,0803,First,Snapdragon Stadium,Simon
+016,Saturday,30/03/24,"Kansas City, Missouri",14:30,11500,62,Mostly Cloudy,Kansas City Current,05,0503,Angel City FC,01,0103,First,CPKC Stadium,Paige
+017,Saturday,30/03/24,"Cary, North Carolina",19:00,5281,74,Partly Cloudy,North Carolina Courage,07,0703,NJ/NY Gotham FC,06,0602,First,First Horizon Stadium at WakeMed Soccer Park,Tobias
+018,Saturday,30/03/24,"Portland, Oregon",16:30,16688,66,Mostly Cloudy,Portland Thorns FC,10,1003,Racing Louisville FC,11,1103,First,Providence Park,Jonas
+019,Saturday,30/03/24,"San Jose, California",19:00,18000,55,Cloudy,Bay FC,02,0203,Houston Dash,04,0403,First,PayPal Park,Jonas
+020,Sunday,31/03/24,"Washington, D.C.",13:00,8182,63,Cloudy,Washington Spirit,14,1403,Utah Royals FC,13,1303,First,Audi Field,Paige
+021,Saturday,12/04/24,"Houston, Texas",19:00,7767,76,Partly Cloudy,Houston Dash,04,0404,Washington Spirit,14,1404,First,Shell Energy Stadium,Simon
+022,Friday,12/04/24,"Sandy, Utah",19:30,8578,76,Mostly Cloudy,Utah Royals FC,13,1304,Orlando Pride,09,0904,First,America First Field,Tobias
+023,Saturday,13/04/24,"Cary, North Carolina",19:00,5711,72,Fair,North Carolina Courage,07,0704,Portland Thorns FC,10,1004,First,First Horizon Stadium at WakeMed Soccer Park,Paige
+024,Saturday,13/04/24,"Louisville, Kentucky",19:30,6818,72,Fair,Racing Louisville FC,11,1104,San Diego Wave FC,12,1203,First,Lynn Family Stadium,Jonas
+025,Saturday,13/04/24,"Bridgeview, Illinois",20:30,3168,67,Mostly Cloudy,Chicago Red Stars,03,0304,Angel City FC,01,0104,First,SeatGeek Stadium,Paige
+026,Sunday,14/04/24,"Harrison, New Jersey",18:00,8573,73,Partly Cloudy,NJ/NY Gotham FC,06,0603,Kansas City Current,05,0504,First,Sports Illustrated Stadium,Paige
+027,Sunday,14/04/24,"San Jose, California",17:00,16719,62,Partly Cloudy,Bay FC,02,0204,Seattle Reign FC,08,0804,First,PayPal Park,Tobias
+028,Friday,19/04/24,"Orlando, Florida",20:00,7701,85,Fair,Orlando Pride,09,0905,San Diego Wave FC,12,1204,First,Inter&Co Stadium,Tobias
+029,Saturday,20/04/24,"Washington, D.C.",13:00,15004,65,Mostly Cloudy,Washington Spirit,14,1405,NJ/NY Gotham FC,06,0604,First,Audi Field,Tobias
+030,Saturday,20/04/24,"Louisville, Kentucky",19:00,11365,57,Cloudy,Racing Louisville FC,11,1105,Utah Royals FC,13,1305,First,Lynn Family Stadium,Simon
+031,Saturday,20/04/24,"Kansas City, Missouri",18:30,11500,49,Cloudy,Kansas City Current,05,0505,Bay FC,02,0205,First,CPKC Stadium,Paige
+032,Saturday,20/04/24,"Portland, Oregon",19:00,17580,57,Mostly Cloudy,Portland Thorns FC,10,1005,Houston Dash,04,0405,First,Providence Park,Simon
+033,Sunday,21/04/24,"Seattle, Washington",15:00,9626,56,Mostly Cloudy,Seattle Reign FC,08,0805,Chicago Red Stars,03,0305,Second,Lumen Field,Tobias
+034,Monday,22/04/24,"Los Angeles, California",16:30,22000,64,Mostly Cloudy,Angel City FC,01,0105,North Carolina Courage,07,0705,First,BMO Stadium,Tobias
+035,Friday,26/04/24,"Washington, D.C.",19:30,11636,60,Mostly Cloudy,Washington Spirit,14,1406,Orlando Pride,09,0906,First,Audi Field,Simon
+036,Friday,26/04/24,"Los Angeles, California",19:00,19178,61,Fair,Angel City FC,01,0106,Kansas City Current,05,0506,Second,BMO Stadium,Simon
+037,Saturday,27/04/24,"Cary, North Carolina",19:00,8135,74,Mostly Cloudy,North Carolina Courage,07,0706,Seattle Reign FC,08,0806,First,First Horizon Stadium at WakeMed Soccer Park,Paige
+038,Saturday,27/04/24,"Bridgeview, Illinois",18:30,4544,76,Mostly Cloudy,Chicago Red Stars,03,0306,Portland Thorns FC,10,1006,First,SeatGeek Stadium,Simon
+039,Saturday,27/04/24,"Sandy, Utah",17:30,10349,51,Mostly Cloudy,Utah Royals FC,13,1306,Houston Dash,04,0406,First,America First Field,Tobias
+040,Saturday,27/04/24,"San Diego, California",19:00,17206,63,Fair,San Diego Wave FC,12,1205,Bay FC,02,0206,First,Snapdragon Stadium,Jonas
+041,Sunday,28/04/24,"Harrison, New Jersey",17:00,6015,77,Mostly Cloudy,NJ/NY Gotham FC,06,0605,Racing Louisville FC,11,1106,First,Sports Illustrated Stadium,Tobias
+042,Wednesday,01/05/24,"Orlando, Florida",19:00,4702,81,Partly Cloudy,Orlando Pride,09,0907,North Carolina Courage,07,0707,First,Inter&Co Stadium,Jonas
+043,Wednesday,01/05/24,"Bridgeview, Illinois",19:00,2999,72,Mostly Cloudy,Chicago Red Stars,03,0307,Washington Spirit,14,1407,First,SeatGeek Stadium,Simon
+044,Wednesday,01/05/24,"San Jose, California",19:00,10611,71,Fair,Bay FC,02,0207,Portland Thorns FC,10,1007,First,PayPal Park,Jonas
+045,Friday,03/05/24,"Sandy, Utah",19:30,10731,58,Fair,Utah Royals FC,13,1307,Angel City FC,01,0107,First,America First Field,Jonas
+046,Friday,03/05/24,"Seattle, Washington",19:00,7030,56,Cloudy,Seattle Reign FC,08,0807,San Diego Wave FC,12,1206,Second,Lumen Field,Simon
+047,Saturday,04/05/24,"Harrison, New Jersey",19:30,6184,54,Cloudy,NJ/NY Gotham FC,06,0606,North Carolina Courage,07,0708,Second,Sports Illustrated Stadium,Jonas
+048,Saturday,04/05/24,"Portland, Oregon",19:00,17039,51,Light Rain,Portland Thorns FC,10,1008,Washington Spirit,14,1408,First,Providence Park,Jonas
+049,Sunday,05/05/24,"Houston, Texas",12:00,5099,79,Mostly Cloudy / Windy,Houston Dash,04,0407,Kansas City Current,05,0507,First,Shell Energy Stadium,Paige
+050,Sunday,05/05/24,"Orlando, Florida",18:00,6837,85,Partly Cloudy,Orlando Pride,09,0908,Racing Louisville FC,11,1107,Second,Inter&Co Stadium,Tobias
+051,Sunday,05/05/24,"San Jose, California",17:00,14317,63,Fair,Bay FC,02,0208,Chicago Red Stars,03,0308,First,PayPal Park,Simon
+052,Wednesday,08/05/24,"Houston, Texas",19:00,4438,83,Mostly Cloudy,Houston Dash,04,0408,NJ/NY Gotham FC,06,0607,First,Shell Energy Stadium,Jonas
+053,Wednesday,08/05/24,"Seattle, Washington",19:00,5083,63,Fair,Seattle Reign FC,08,0808,Kansas City Current,05,0508,First,Lumen Field,Jonas
+054,Wednesday,08/05/24,"San Diego, California",19:00,10289,63,Mostly Cloudy,San Diego Wave FC,12,1207,Utah Royals FC,13,1308,First,Snapdragon Stadium,Simon
+055,Friday,10/05/24,"Louisville, Kentucky",20:00,6222,71,Fair,Racing Louisville FC,11,1108,Washington Spirit,14,1409,First,Lynn Family Stadium,Paige
+056,Saturday,11/05/24,"Orlando, Florida",19:30,7707,86,Fair,Orlando Pride,09,0909,Bay FC,02,0209,First,Inter&Co Stadium,Simon
+057,Saturday,11/05/24,"Portland, Oregon",19:00,20229,84,Fair,Portland Thorns FC,10,1009,Seattle Reign FC,08,0809,First,Providence Park,Jonas
+058,Sunday,12/05/24,"Bridgeview, Illinois",,,,,Chicago Red Stars,03,0309,Utah Royals FC,13,1309,Second,SeatGeek Stadium,Jonas
+059,Sunday,12/05/24,"Kansas City, Missouri",17:00,11500,72,Light Rain,Kansas City Current,05,0509,North Carolina Courage,07,0709,First,CPKC Stadium,Paige
+060,Sunday,12/05/24,"San Diego, California",16:30,16024,67,Fair,San Diego Wave FC,12,1208,NJ/NY Gotham FC,06,0608,First,Snapdragon Stadium,Simon
+061,Sunday,12/05/24,"Los Angeles, California",16:30,18037,65,Partly Cloudy,Angel City FC,01,0108,Houston Dash,04,0409,First,BMO Stadium,Tobias
+062,Friday,17/05/24,"Cary, North Carolina",20:00,4528,73,Cloudy,North Carolina Courage,07,0710,Utah Royals FC,13,1310,Second,First Horizon Stadium at WakeMed Soccer Park,Simon
+063,Friday,17/05/24,"San Jose, California",19:30,16930,64,Fair,Bay FC,02,0210,San Diego Wave FC,12,1209,Second,PayPal Park,Tobias
+064,Friday,17/05/24,"Houston, Texas",21:38,5726,70,Partly Cloudy,Houston Dash,04,0410,Portland Thorns FC,10,1010,Second,Shell Energy Stadium,Paige
+065,Saturday,18/05/24,"Washington, D.C.",19:30,13342,63,Cloudy,Washington Spirit,14,1410,Angel City FC,01,0109,First,Audi Field,Tobias
+066,Sunday,18/05/24,"Kansas City, Missouri",20:30,11500,78,Partly Cloudy,Kansas City Current,05,0510,Racing Louisville FC,11,1109,First,CPKC Stadium,Simon
+067,Sunday,19/05/24,"Harrison, New Jersey",17:00,8996,75,Mostly Cloudy,NJ/NY Gotham FC,06,0609,Chicago Red Stars,03,0310,First,Sports Illustrated Stadium,Paige
+068,Sunday,19/05/24,"Seattle, Washington",15:00,6781,62,Partly Cloudy,Seattle Reign FC,08,0810,Orlando Pride,09,0910,First,Lumen Field,Paige
+069,Thursday,23/05/24,"Los Angeles, California",19:00,19103,62,Mostly Cloudy,Angel City FC,01,0110,San Diego Wave FC,12,1210,First,BMO Stadium,Paige
+070,Friday,24/05/24,"Orlando, Florida",19:00,9226,87,Partly Cloudy,Orlando Pride,09,0911,Portland Thorns FC,10,1011,First,Inter&Co Stadium,Paige
+071,Friday,24/05/24,"Washington, D.C.",19:30,11551,79,Mostly Cloudy,Washington Spirit,14,1411,Seattle Reign FC,08,0811,Second,Audi Field,Simon
+072,Friday,24/05/24,"Houston, Texas",19:00,4732,87,Fair,Houston Dash,04,0411,North Carolina Courage,07,0711,Second,Shell Energy Stadium,Jonas
+073,Friday,24/05/24,"San Jose, California",19:00,12643,61,Partly Cloudy,Bay FC,02,0211,NJ/NY Gotham FC,06,0610,First,PayPal Park,Jonas
+074,Saturday,25/05/24,"Bridgeview, Illinois",18:30,3872,69,Fair,Chicago Red Stars,03,0311,Racing Louisville FC,11,1110,First,SeatGeek Stadium,Jonas
+075,Saturday,25/05/24,"Sandy, Utah",20:40,7491,56,Mostly Cloudy,Utah Royals FC,13,1311,Kansas City Current,05,0511,First,America First Field,Tobias
+076,Saturday,08/06/24,"Louisville, Kentucky",,,,,Racing Louisville FC,11,1111,Houston Dash,04,0412,Second,Lynn Family Stadium,Jonas
+077,Friday,07/06/24,"San Diego, California",19:00,17073,64,Mostly Cloudy,San Diego Wave FC,12,1211,Orlando Pride,09,0912,Second,Snapdragon Stadium,Simon
+078,Saturday,08/06/24,"Harrison, New Jersey",12:30,11662,79,Mostly Cloudy,NJ/NY Gotham FC,06,0611,Angel City FC,01,0111,First,Sports Illustrated Stadium,Paige
+079,Saturday,08/06/24,"Chicago, Illinois",18:30,35038,59,Light Rain,Chicago Red Stars,03,0312,Bay FC,02,0212,Second,Wrigley Field,Tobias
+080,Saturday,08/06/24,"Sandy, Utah",17:30,8486,92,Partly Cloudy,Utah Royals FC,13,1312,Washington Spirit,14,1412,Second,America First Field,Jonas
+081,Saturday,08/06/24,"Portland, Oregon",19:00,21025,80,Mostly Cloudy,Portland Thorns FC,10,1012,North Carolina Courage,07,0712,Second,Providence Park,Tobias
+082,Sunday,09/06/24,"Kansas City, Missouri",17:00,11500,80,Fair,Kansas City Current,05,0512,Seattle Reign FC,08,0812,Second,CPKC Stadium,Simon
+083,Friday,14/06/24,"Kansas City, Missouri",19:00,11500,84,Fair,Kansas City Current,05,0513,Chicago Red Stars,03,0313,First,CPKC Stadium,Jonas
+084,Saturday,15/06/24,"Louisville, Kentucky",12:00,6412,83,Fair,Racing Louisville FC,11,1112,NJ/NY Gotham FC,06,0612,Second,Lynn Family Stadium,Paige
+085,Saturday,15/06/24,"Washington, D.C.",19:30,19897,83,Fair,Washington Spirit,14,1413,San Diego Wave FC,12,1212,First,Audi Field,Paige
+086,Saturday,15/06/24,"Cary, North Carolina",19:54,4776,86,Mostly Cloudy,North Carolina Courage,07,0713,Orlando Pride,09,0913,Second,First Horizon Stadium at WakeMed Soccer Park,Tobias
+087,Saturday,15/06/24,"Houston, Texas",21:30,6147,87,Partly Cloudy,Houston Dash,04,0413,Angel City FC,01,0112,Second,Shell Energy Stadium,Jonas
+088,Sunday,16/06/24,"Seattle, Washington",13:00,9052,59,Cloudy,Seattle Reign FC,08,0813,Portland Thorns FC,10,1013,Second,Lumen Field,Tobias
+089,Sunday,16/06/24,"San Jose, California",19:00,10367,73,Fair,Bay FC,02,0213,Utah Royals FC,13,1313,First,PayPal Park,Paige
+090,Wednesday,19/06/24,"Harrison, New Jersey",19:00,10718,87,Mostly Cloudy,NJ/NY Gotham FC,06,0613,San Diego Wave FC,12,1213,Second,Sports Illustrated Stadium,Jonas
+091,Wednesday,19/06/24,"Los Angeles, California",19:00,16735,69,Fair,Angel City FC,01,0113,Racing Louisville FC,11,1113,First,BMO Stadium,Tobias
+092,Friday,21/06/24,"Orlando, Florida",20:00,9656,83,Mostly Cloudy,Orlando Pride,09,0914,Utah Royals FC,13,1314,Second,Inter&Co Stadium,Tobias
+093,Saturday,22/06/24,"Houston, Texas",18:30,6473,89,Fair,Houston Dash,04,0414,San Diego Wave FC,12,1214,First,Shell Energy Stadium,Jonas
+094,Saturday,22/06/24,"San Jose, California",19:00,15640,82,Fair,Bay FC,02,0214,Angel City FC,01,0114,Second,PayPal Park,Simon
+095,Sunday,23/06/24,"Portland, Oregon",13:00,20024,70,Mostly Cloudy,Portland Thorns FC,10,1014,Kansas City Current,05,0514,Second,Providence Park,Simon
+096,Sunday,23/06/24,"Cary, North Carolina",18:00,5256,97,Mostly Cloudy,North Carolina Courage,07,0714,Chicago Red Stars,03,0314,First,First Horizon Stadium at WakeMed Soccer Park,Jonas
+097,Sunday,23/06/24,"Seattle, Washington",15:00,10715,68,Partly Cloudy,Seattle Reign FC,08,0814,Racing Louisville FC,11,1114,First,Lumen Field,Tobias
+098,Sunday,23/06/24,"Harrison, New Jersey",18:00,8396,73,Partly Cloudy,NJ/NY Gotham FC,06,0614,Washington Spirit,14,1414,Second,Sports Illustrated Stadium,Jonas
+099,Friday,28/06/24,"Kansas City, Missouri",19:00,11500,84,Mostly Cloudy,Kansas City Current,05,0515,Houston Dash,04,0415,Second,CPKC Stadium,Simon
+100,Friday,28/06/24,"San Diego, California",19:00,24115,67,Fair,San Diego Wave FC,12,1215,Chicago Red Stars,03,0315,First,Snapdragon Stadium,Paige
+101,Saturday,29/06/24,"Louisville, Kentucky",,,,,Racing Louisville FC,11,1115,Bay FC,02,0215,First,Lynn Family Stadium,Jonas
+102,Saturday,29/06/24,"Washington, D.C.",19:30,15717,88,Partly Cloudy,Washington Spirit,14,1415,North Carolina Courage,07,0715,First,Audi Field,Tobias
+103,Saturday,29/06/24,"Sandy, Utah",20:00,8677,96,Partly Cloudy,Utah Royals FC,13,1315,Portland Thorns FC,10,1015,First,America First Field,Tobias
+104,Sunday,30/06/24,"Harrison, New Jersey",13:00,7064,84,Cloudy,NJ/NY Gotham FC,06,0615,Seattle Reign FC,08,0815,First,Sports Illustrated Stadium,Simon
+105,Monday,30/06/24,"Los Angeles, California",16:30,22000,71,Fair,Angel City FC,01,0115,Orlando Pride,09,0915,Second,BMO Stadium,Jonas
+106,Friday,05/07/24,"Portland, Oregon",19:00,18011,95,Fair,Portland Thorns FC,10,1016,San Diego Wave FC,12,1216,First,Providence Park,Paige
+107,Saturday,06/07/24,"Bridgeview, Illinois",12:00,5566,59,Mostly Cloudy,Chicago Red Stars,03,0316,Houston Dash,04,0416,First,SeatGeek Stadium,Tobias
+108,Saturday,06/07/24,"Kansas City, Missouri",18:30,11500,85,Mostly Cloudy,Kansas City Current,05,0516,Orlando Pride,09,0916,First,CPKC Stadium,Tobias
+109,Saturday,06/07/24,"Los Angeles, California",19:00,16542,73,Fair,Angel City FC,01,0116,NJ/NY Gotham FC,06,0616,Second,BMO Stadium,Tobias
+110,Saturday,06/07/24,"San Jose, California",19:00,11384,87,Fair,Bay FC,02,0216,Washington Spirit,14,1416,Second,PayPal Park,Tobias
+111,Sunday,07/07/24,"Cary, North Carolina",16:30,4738,76,Light Rain,North Carolina Courage,07,0716,Racing Louisville FC,11,1116,First,First Horizon Stadium at WakeMed Soccer Park,Simon
+112,Sunday,07/07/24,"Seattle, Washington",15:00,6276,90,Fair,Seattle Reign FC,08,0816,Utah Royals FC,13,1316,First,Lumen Field,Tobias
+113,Saturday,24/08/24,"Houston, Texas",,,,,Houston Dash,04,0417,Orlando Pride,09,0917,First,Shell Energy Stadium,Jonas
+114,Friday,23/08/24,"Sandy, Utah",19:30,14539,87,Partly Cloudy,Utah Royals FC,13,1317,Bay FC,02,0217,Second,America First Field,Tobias
+115,Saturday,24/08/24,"Harrison, New Jersey",14:30,10640,85,Partly Cloudy,NJ/NY Gotham FC,06,0617,Portland Thorns FC,10,1017,Second,Sports Illustrated Stadium,Paige
+116,Saturday,23/08/24,"San Diego, California",13:30,20500,76,Fair,San Diego Wave FC,12,1217,Angel City FC,01,0117,Second,Snapdragon Stadium,Paige
+117,Saturday,24/08/24,"Louisville, Kentucky",19:30,6607,87,Mostly Cloudy,Racing Louisville FC,11,1117,Chicago Red Stars,03,0317,Second,Lynn Family Stadium,Simon
+118,Sunday,25/08/24,"Washington, D.C.",12:00,17130,82,Fair,Washington Spirit,14,1417,Kansas City Current,05,0517,First,Audi Field,Tobias
+119,Sunday,25/08/24,"Seattle, Washington",19:00,16598,73,Fair,Seattle Reign FC,08,0817,North Carolina Courage,07,0717,Second,Lumen Field,Tobias
+120,Friday,30/08/24,"Portland, Oregon",19:00,18018,94,Fair,Portland Thorns FC,10,1018,Bay FC,02,0218,Second,Providence Park,Tobias
+121,Saturday,31/08/24,"Louisville, Kentucky",19:30,5011,75,Cloudy,Racing Louisville FC,11,1118,Seattle Reign FC,08,0818,Second,Lynn Family Stadium,Simon
+122,Saturday,31/08/24,"Houston, Texas",20:30,5171,81,Fair,Houston Dash,04,0418,Utah Royals FC,13,1318,Second,Shell Energy Stadium,Simon
+123,Sunday,01/09/24,"Cary, North Carolina",14:00,6003,90,Mostly Cloudy,North Carolina Courage,07,0718,Kansas City Current,05,0518,Second,First Horizon Stadium at WakeMed Soccer Park,Jonas
+124,Sunday,01/09/24,"Los Angeles, California",13:00,18159,79,Fair,Angel City FC,01,0118,Chicago Red Stars,03,0318,Second,BMO Stadium,Simon
+125,Sunday,01/09/24,"Orlando, Florida",19:25,8726,79,Light Rain,Orlando Pride,09,0918,NJ/NY Gotham FC,06,0618,First,Inter&Co Stadium,Tobias
+126,Sunday,01/09/24,"San Diego, California",17:00,23541,72,Partly Cloudy,San Diego Wave FC,12,1218,Washington Spirit,14,1418,Second,Snapdragon Stadium,Jonas
+127,Friday,06/09/24,"Los Angeles, California",19:00,16023,83,Fair,Angel City FC,01,0119,Seattle Reign FC,08,0819,First,BMO Stadium,Paige
+128,Saturday,07/09/24,"Washington, D.C.",12:30,14306,72,Cloudy,Washington Spirit,14,1419,Portland Thorns FC,10,1019,Second,Audi Field,Jonas
+129,Saturday,07/09/24,"Kansas City, Missouri",18:30,11500,70,Fair,Kansas City Current,05,0519,Utah Royals FC,13,1319,Second,CPKC Stadium,Paige
+130,Saturday,07/09/24,"San Jose, California",19:00,11478,61,Fair,Bay FC,02,0219,Racing Louisville FC,11,1119,Second,PayPal Park,Simon
+131,Sunday,08/09/24,"Harrison, New Jersey",13:00,,69,Partly Cloudy,NJ/NY Gotham FC,06,0619,Houston Dash,04,0419,Second,Sports Illustrated Stadium,Tobias
+132,Sunday,08/09/24,"Bridgeview, Illinois",17:00,7291,80,Fair,Chicago Red Stars,03,0319,Orlando Pride,09,0919,Second,SeatGeek Stadium,Tobias
+133,Sunday,08/09/24,"San Diego, California",17:00,26516,88,Fair,San Diego Wave FC,12,1219,North Carolina Courage,07,0719,First,Snapdragon Stadium,Paige
+134,Friday,13/09/24,"Cary, North Carolina",19:00,6837,75,Cloudy,North Carolina Courage,07,0720,Bay FC,02,0220,First,First Horizon Stadium at WakeMed Soccer Park,Tobias
+135,Friday,13/09/24,"Orlando, Florida",20:00,9396,81,Cloudy,Orlando Pride,09,0920,Kansas City Current,05,0520,Second,Inter&Co Stadium,Simon
+136,Friday,13/09/24,"Portland, Oregon",19:00,17120,71,Mostly Cloudy,Portland Thorns FC,10,1020,Chicago Red Stars,03,0320,Second,Providence Park,Simon
+137,Saturday,14/09/24,"Louisville, Kentucky",19:30,5493,85,Fair,Racing Louisville FC,11,1120,Angel City FC,01,0120,Second,Lynn Family Stadium,Simon
+138,Saturday,14/09/24,"Sandy, Utah",20:00,9494,76,Partly Cloudy,Utah Royals FC,13,1320,San Diego Wave FC,12,1220,Second,America First Field,Jonas
+139,Sunday,15/09/24,"Washington, D.C.",13:00,11792,80,Mostly Cloudy,Washington Spirit,14,1420,Houston Dash,04,0420,Second,Audi Field,Simon
+140,Monday,16/09/24,"Seattle, Washington",19:00,6604,68,Fair,Seattle Reign FC,08,0820,NJ/NY Gotham FC,06,0620,Second,Lumen Field,Simon
+141,Friday,20/09/24,"Kansas City, Missouri",19:00,11500,87,Partly Cloudy,Kansas City Current,05,0521,Washington Spirit,14,1421,Second,CPKC Stadium,Jonas
+142,Friday,20/09/24,"San Jose, California",19:30,11063,65,Fair,Bay FC,02,0221,Orlando Pride,09,0921,Second,PayPal Park,Jonas
+143,Saturday,21/09/24,"Louisville, Kentucky",19:30,4653,88,Cloudy,Racing Louisville FC,11,1121,North Carolina Courage,07,0721,Second,Lynn Family Stadium,Paige
+144,Saturday,21/09/24,"Houston, Texas",19:30,5807,85,Fair,Houston Dash,04,0421,Seattle Reign FC,08,0821,First,Shell Energy Stadium,Jonas
+145,Saturday,21/09/24,"Bridgeview, Illinois",20:30,5045,78,Mostly Cloudy,Chicago Red Stars,03,0321,San Diego Wave FC,12,1221,Second,SeatGeek Stadium,Simon
+146,Sunday,22/09/24,"Harrison, New Jersey",13:00,7680,73,Partly Cloudy,NJ/NY Gotham FC,06,0621,Utah Royals FC,13,1321,First,Sports Illustrated Stadium,Paige
+147,Monday,23/09/24,"Los Angeles, California",19:00,22000,64,Cloudy,Angel City FC,01,0121,Portland Thorns FC,10,1021,First,BMO Stadium,Paige
+148,Friday,27/09/24,"Los Angeles, California",19:00,19257,63,Cloudy,Angel City FC,01,0122,Washington Spirit,14,1422,Second,BMO Stadium,Tobias
+149,Saturday,28/09/24,"Kansas City, Missouri",,,,,Kansas City Current,05,0522,NJ/NY Gotham FC,06,0622,Second,CPKC Stadium,Jonas
+150,Saturday,28/09/24,"Sandy, Utah",17:00,9002,94,Fair,Utah Royals FC,13,1322,Racing Louisville FC,11,1122,Second,America First Field,Simon
+151,Saturday,28/09/24,"Orlando, Florida",19:30,17087,81,Mostly Cloudy,Orlando Pride,09,0922,Houston Dash,04,0422,Second,Inter&Co Stadium,Paige
+152,Saturday,28/09/24,"San Diego, California",19:00,15271,66,Fair,San Diego Wave FC,12,1222,Portland Thorns FC,10,1022,Second,Snapdragon Stadium,Paige
+153,Sunday,29/09/24,"Bridgeview, Illinois",17:00,4317,73,Mostly Cloudy,Chicago Red Stars,03,0322,North Carolina Courage,07,0722,Second,SeatGeek Stadium,Simon
+154,Sunday,29/09/24,"Seattle, Washington",15:00,9051,62,Mostly Cloudy,Seattle Reign FC,08,0822,Bay FC,02,0222,Second,Lumen Field,Paige
+155,Friday,04/10/24,"Houston, Texas",19:00,5870,85,Mostly Cloudy,Houston Dash,04,0423,Chicago Red Stars,03,0323,Second,Shell Energy Stadium,Tobias
+156,Friday,04/10/24,"Seattle, Washington",19:00,6707,58,Partly Cloudy,Seattle Reign FC,08,0823,Angel City FC,01,0123,Second,Lumen Field,Jonas
+157,Saturday,05/10/24,"Cary, North Carolina",19:00,8496,75,Fair,North Carolina Courage,07,0723,San Diego Wave FC,12,1223,Second,First Horizon Stadium at WakeMed Soccer Park,Tobias
+158,Saturday,05/10/24,"Harrison, New Jersey",19:30,9092,72,Fair,NJ/NY Gotham FC,06,0623,Bay FC,02,0223,Second,Sports Illustrated Stadium,Jonas
+159,Saturday,05/10/24,"Louisville, Kentucky",19:30,6013,88,Fair,Racing Louisville FC,11,1123,Kansas City Current,05,0523,Second,Lynn Family Stadium,Simon
+160,Saturday,05/10/24,"Portland, Oregon",19:00,17451,66,Fair,Portland Thorns FC,10,1023,Utah Royals FC,13,1323,Second,Providence Park,Jonas
+161,Sunday,06/10/24,"Orlando, Florida",17:00,7729,73,Light Rain,Orlando Pride,09,0923,Washington Spirit,14,1423,Second,Inter&Co Stadium,Paige
+162,Friday,11/10/24,"Portland, Oregon",19:00,17174,62,Mostly Cloudy,Portland Thorns FC,10,1024,Orlando Pride,09,0924,Second,Providence Park,Paige
+163,Saturday,12/10/24,"Bridgeview, Illinois",15:00,7050,68,Mostly Cloudy,Chicago Red Stars,03,0324,NJ/NY Gotham FC,06,0624,Second,SeatGeek Stadium,Tobias
+164,Saturday,12/10/24,"Cary, North Carolina",19:30,7037,66,Partly Cloudy,North Carolina Courage,07,0724,Angel City FC,01,0124,Second,First Horizon Stadium at WakeMed Soccer Park,Tobias
+165,Saturday,12/10/24,"San Jose, California",19:00,12974,72,Partly Cloudy,Bay FC,02,0224,Kansas City Current,05,0524,Second,PayPal Park,Paige
+166,Sunday,13/10/24,"Washington, D.C.",17:00,13781,79,Partly Cloudy / Windy,Washington Spirit,14,1424,Racing Louisville FC,11,1124,Second,Audi Field,Paige
+167,Sunday,13/10/24,"Sandy, Utah",15:00,9002,83,Fair,Utah Royals FC,13,1324,Seattle Reign FC,08,0824,Second,America First Field,Paige
+168,Sunday,13/10/24,"San Diego, California",17:00,15549,70,Fair,San Diego Wave FC,12,1224,Houston Dash,04,0424,Second,Snapdragon Stadium,Simon
+169,Friday,18/10/24,"Seattle, Washington",19:00,8456,54,Cloudy,Seattle Reign FC,08,0825,Houston Dash,04,0425,Second,Lumen Field,Simon
+170,Saturday,19/10/24,"Kansas City, Missouri",12:00,11500,69,Mostly Cloudy,Kansas City Current,05,0525,San Diego Wave FC,12,1225,Second,CPKC Stadium,Paige
+171,Saturday,19/10/24,"Louisville, Kentucky",19:30,5905,65,Fair,Racing Louisville FC,11,1125,Portland Thorns FC,10,1025,Second,Lynn Family Stadium,Simon
+172,Saturday,19/10/24,"San Jose, California",19:00,14901,76,Fair,Bay FC,02,0225,North Carolina Courage,07,0725,Second,PayPal Park,Jonas
+173,Sunday,20/10/24,"Washington, D.C.",,,,,Washington Spirit,14,1425,Chicago Red Stars,03,0325,Second,Audi Field,Jonas
+174,Sunday,20/10/24,"Harrison, New Jersey",,,,,NJ/NY Gotham FC,06,0625,Orlando Pride,09,0925,Second,Sports Illustrated Stadium,Jonas
+175,Sunday,20/10/24,"Los Angeles, California",16:30,20039,75,Fair,Angel City FC,01,0125,Utah Royals FC,13,1325,Second,BMO Stadium,Tobias
+176,Friday,01/11/24,"Sandy, Utah",19:30,9879,48,Cloudy,Utah Royals FC,13,1326,NJ/NY Gotham FC,06,0626,Second,America First Field,Paige
+177,Friday,01/11/24,"Portland, Oregon",19:00,23212,54,Light Rain,Portland Thorns FC,10,1026,Angel City FC,01,0126,Second,Providence Park,Tobias
+178,Saturday,02/11/24,"Orlando, Florida",17:00,7765,72,Cloudy,Orlando Pride,09,0926,Seattle Reign FC,08,0826,Second,Inter&Co Stadium,Paige
+179,Saturday,02/11/24,"Cary, North Carolina",19:30,10026,63,Partly Cloudy,North Carolina Courage,07,0726,Washington Spirit,14,1426,Second,First Horizon Stadium at WakeMed Soccer Park,Tobias
+180,Saturday,02/11/24,"Houston, Texas",20:20,8176,76,Light Rain,Houston Dash,04,0426,Bay FC,02,0226,Second,Shell Energy Stadium,Paige
+181,Sunday,03/11/24,"Bridgeview, Illinois",14:00,5595,62,Cloudy,Chicago Red Stars,03,0326,Kansas City Current,05,0526,Second,SeatGeek Stadium,Simon
+182,Sunday,03/11/24,"Louisville, Kentucky",17:30,2137,79,Mostly Cloudy,Racing Louisville FC,11,1126,San Diego Wave FC,12,1226,Second,Lynn Family Stadium,Paige
