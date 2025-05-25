@@ -120,7 +120,7 @@ Touches_scaled_ranked <- Touches_scaled %>%
   left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
   filter(!is.na(Rank))
 
-# Plot
+# Plot of MAD
 ggplot(Touches_scaled_ranked, aes(x = Rank, y = ScaledTouch, group = Rank)) +
   geom_boxplot(fill = "lightblue", color = "black") +
   geom_hline(yintercept = c(-2, 2), linetype = "dashed", color = "red") +
@@ -130,6 +130,26 @@ ggplot(Touches_scaled_ranked, aes(x = Rank, y = ScaledTouch, group = Rank)) +
     subtitle = "Boxplot of (TouchCount - Median) / MAD per Team",
     x = "Team (Ordered by Final Rank)",
     y = "Scaled Touch Value (MAD Units)"
+  ) +
+  theme_minimal()
+
+############################ Within-Team Variability in Touch Frequency vs Ranking ############################ 
+
+# Join variability data to final standings
+Variability_vs_Rank <- Team_touch_variability %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  filter(!is.na(Rank))
+
+# Plot SDTouches vs Rank
+ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTouches)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1) +
+  scale_x_reverse(breaks = 1:14) +
+  labs(
+    title = "Team Variability in Touch vs Final Rank",
+    x = "Final Season Rank",
+    y = "Touch Frequency Variability (SD)"
   ) +
   theme_minimal()
 
