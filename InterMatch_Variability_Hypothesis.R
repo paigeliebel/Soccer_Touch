@@ -17,10 +17,6 @@ source("Core_Hypothesis.R") #Runs and brings in data frames from Core_Hypothesis
 #Ensure to use the correct dfs. Touches_final and Matches_final are correct. They only include assigned rater data, no repeat matches
 
 #Check to make sure data frames are loaded:
-if (!exists("Touches_final") | !exists("Matches_final") | !exists("FinalStandings")) {
-  stop("Touches_final, Matches_final, or FinalStandings not loaded. Check Data_Management.R.")
-}
-
 if (!exists("Touches_final") | !exists("Matches_final") | !exists("FinalStandings") | !exists("Touches_CoreHyp")) {
   stop("Touches_final, Matches_final, Touhe_CoreHyp or FinalStandings not loaded. Check Data_Management.R and Core_Hypothesis.R.")
 }
