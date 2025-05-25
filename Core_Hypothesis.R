@@ -104,7 +104,7 @@ ggplot(Touches_per_game_ranked, aes(x = Rank, y = TouchCount, group = Rank)) +
   theme_minimal()
 
 # Scale touch based on distance from mean (MAD-based z-score)
-# How extreme a touc count is compared to team's norm
+# How extreme a touch count is compared to team's norm
 Touches_scaled <- Touches_per_game %>%
   group_by(Team) %>%
   mutate(
