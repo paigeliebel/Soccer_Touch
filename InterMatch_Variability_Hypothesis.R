@@ -25,24 +25,52 @@ if (!exists("Touches_final") | !exists("Matches_final") | !exists("FinalStanding
   stop("Touches_final, Matches_final, Touhe_CoreHyp or FinalStandings not loaded. Check Data_Management.R and Core_Hypothesis.R.")
 }
 
-# Step 1: Prosocial touches per team per match
+############################ Inter-Match Variability Hypothesis ############################ 
+
+# Basically asking: "When a team is more (or less) touchy than usual, do they score more or less goals than their opponent?"
+# Note that this is still using same CoreHyp touches (therefore only prosocial touches and not including GF, GA, Subs etc)
+
+#Clean Match column data for use
+Matches_final_cleaned <- Matches_final %>%
+  mutate(
+    GoalsFor = as.numeric(str_trim(GoalsFor)),
+    GoalsAgainst = as.numeric(str_trim(GoalsAgainst))
+  )
+
+#Get TeamID into Matches_final
+Matches_finalID <- Matches_final_cleaned %>%
+  mutate(
+    MatchID = str_pad(MatchID, width = 4, pad = "0"),  # in case it was shortened
+    TeamID = str_sub(MatchID, 1, 2),                     # preserve leading zeros
+    GoalDiff = GoalsFor - GoalsAgainst
+  )
+
+# Prosocial touches per team per match
 Touches_per_match <- Touches_CoreHyp %>%
   group_by(Team, SeasonMatchNumber) %>%
   summarise(TouchCount = n(), .groups = "drop")
 
-# Step 2: Average touch per team over the season
+# Average touch per team over the season
 Team_season_avg <- Touches_per_match %>%
   group_by(Team) %>%
   summarise(SeasonAvgTouch = mean(TouchCount), .groups = "drop")
 
-# Step 3: Merge & calculate scaled deviation from average
+# Merge & calculate scaled deviation from average
 Touches_scaled_dev <- Touches_per_match %>%
   left_join(Team_season_avg, by = "Team") %>%
-  mutate(ScaledAboveAvg = TouchCount - SeasonAvgTouch)
+  mutate(ScaledAboveAvg = TouchCount - SeasonAvgTouch) # positive = more touchy than average, neg = less touchy than average
 
-ggplot(Touch_Goal_Analysis, aes(x = ScaledAboveAvg, y = GoalDiff)) +
+# Joins dataframes (goal differetials to the touches scaled)
+Touch_GoalDiff_Analysis <- Touches_scaled_dev %>%
+  left_join(
+    Matches_finalID %>% select(SeasonMatchNumber, TeamID, GoalDiff),
+    by = c("SeasonMatchNumber", "Team" = "TeamID")
+  )
+
+# Visualize 
+ggplot(Touch_GoalDiff_Analysis, aes(x = ScaledAboveAvg, y = GoalDiff)) +
   geom_point(size = 2, alpha = 0.7) +
-  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
   labs(
     title = "Touch Count Deviation vs Match Goal Differential",
     x = "Touches Above/Below Team Average",
@@ -50,5 +78,37 @@ ggplot(Touch_Goal_Analysis, aes(x = ScaledAboveAvg, y = GoalDiff)) +
   ) +
   theme_minimal()
 
-model <- lm(GoalDiff ~ ScaledAboveAvg, data = Touch_Goal_Analysis)
-summary(model)
+# Pearson
+cor.test(Touch_GoalDiff_Analysis$ScaledAboveAvg, Touch_GoalDiff_Analysis$GoalDiff)
+
+############################ Wilcoxon: Inter-Match Variability Hypothesis ############################ 
+
+# Wilcoxon: Perhaps not nicely distributed: “Do teams tend to have higher goal differentials when they are more touchy than their season average?”
+
+# Create AboveAvgTouch flag
+Touch_AboveBelow_Analysis <- Touch_GoalDiff_Analysis %>%
+  mutate(AboveAvgTouch = ScaledAboveAvg > 0)
+
+# Summary of goal differentials by touch group
+Touch_AboveBelow_Analysis %>%
+  group_by(AboveAvgTouch) %>%
+  summarise(
+    n = n(),
+    mean_GD = mean(GoalDiff, na.rm = TRUE),
+    median_GD = median(GoalDiff, na.rm = TRUE),
+    sd_GD = sd(GoalDiff, na.rm = TRUE)
+  )
+
+# Wilcoxon rank-sum test
+wilcox.test(GoalDiff ~ AboveAvgTouch, data = Touch_AboveBelow_Analysis)
+
+# Visualize Wilcoxon
+ggplot(Touch_AboveBelow_Analysis, aes(x = AboveAvgTouch, y = GoalDiff)) +
+  geom_boxplot(fill = "lightblue") +
+  scale_x_discrete(labels = c("FALSE" = "Below Avg Touch", "TRUE" = "Above Avg Touch")) +
+  labs(
+    title = "Goal Differential by Above/Below Avg Touch",
+    x = "Above Team's Avg Touch?",
+    y = "Goal Differential"
+  ) +
+  theme_minimal()
