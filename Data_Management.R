@@ -121,7 +121,6 @@ clean_body_parts <- function(x) {
     ))
 }
 
-
 clean_situation <- function(x) {
   case_when(
     x == "FEF" ~ "REF",
@@ -323,3 +322,4 @@ Touches_interrater <- Touches %>%
 
 Matches_interrater <- Matches %>%
   inner_join(interrater_assignments, by = "SeasonMatchNumber")
+

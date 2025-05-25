@@ -8,6 +8,7 @@ library(janitor)
 library(readxl)
 library(rmarkdown)
 library(readr)
+library (dplyr)
 
 source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
 
@@ -28,11 +29,13 @@ if (!exists("Touches_final") | !exists("Matches_final") | !exists("FinalStanding
 
 Exclude_Touch <- c("TA", "CO", "NEG")
 Exclude_Situation <- c("GF", "GA", "SUB") 
+#Exclude_Visibility <- c("P")
 
 #Creates data set for core hypothesis analysis
 Touches_CoreHyp <- Touches_final %>%
   filter(!(HapticRitual %in% Exclude_Touch)) %>%
-  filter(!(Situation %in% Exclude_Situation))
+  filter(!(Situation %in% Exclude_Situation)) #%>% 
+  #filter(!(Visibility %in% Exclude_Visibility))
 
 #Count of frequency of touches per team
 Touches_by_team <- Touches_CoreHyp %>%
@@ -61,6 +64,74 @@ ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches)) +
   theme_minimal()
 
 cor_result <- cor.test(Team_Touches_Standings$TotalTouches, Team_Touches_Standings$Rank)
+
+############################ Within-Team Variability in Touch Frequency ############################ 
+
+# Looks at the variability a team has across matches throughout the season
+
+# Count touches per team per game from CoreHyp data frame
+Touches_per_game <- Touches_CoreHyp %>%
+  group_by(Team, SeasonMatchNumber) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
+# Computing Within-Team Variability
+Team_touch_variability <- Touches_per_game %>%
+  group_by(Team) %>%
+  summarise(
+    MeanTouches = mean(TouchCount),
+    SDTouches = sd(TouchCount),
+    MinTouches = min(TouchCount),
+    MaxTouches = max(TouchCount),
+    NumGames = n(),
+    .groups = "drop"
+  )
+
+# Join season rank to each team for ordering in the plot
+Touches_per_game_ranked <- Touches_per_game %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  filter(!is.na(Rank))  # make sure we only include ranked teams
+
+# Visualize 
+ggplot(Touches_per_game_ranked, aes(x = Rank, y = TouchCount, group = Rank)) +
+  geom_boxplot(fill = "lightblue", color = "black") +
+  scale_x_reverse(breaks = 1:14) +  # clean 1–14 axis
+  labs(
+    title = "Variation of Within-Team Touch Frequency per Game",
+    x = "Team (Ordered by Final Rank)",
+    y = "Touches per Game"
+  ) +
+  theme_minimal()
+
+# Scale touch based on distance from mean (MAD-based z-score)
+# How extreme a touc count is compared to team's norm
+Touches_scaled <- Touches_per_game %>%
+  group_by(Team) %>%
+  mutate(
+    MedianTouch = median(TouchCount),
+    MAD = mad(TouchCount),  # median absolute deviation
+    ScaledTouch = (TouchCount - MedianTouch) / MAD
+  ) %>%
+  ungroup()
+
+# Join Touches_scaled with ranks
+Touches_scaled_ranked <- Touches_scaled %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  filter(!is.na(Rank))
+
+# Plot
+ggplot(Touches_scaled_ranked, aes(x = Rank, y = ScaledTouch, group = Rank)) +
+  geom_boxplot(fill = "lightblue", color = "black") +
+  geom_hline(yintercept = c(-2, 2), linetype = "dashed", color = "red") +
+  scale_x_reverse(breaks = 1:14) +  # clean 1–14 axis
+  labs(
+    title = "Scaled Touch Deviation from Team Median",
+    subtitle = "Boxplot of (TouchCount - Median) / MAD per Team",
+    x = "Team (Ordered by Final Rank)",
+    y = "Scaled Touch Value (MAD Units)"
+  ) +
+  theme_minimal()
 
 #Following looks at the number of subs each team has over the season and number of corners etc (looking at match data)
 # #Number of subs:
