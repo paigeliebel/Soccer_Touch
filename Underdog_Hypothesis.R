@@ -11,6 +11,8 @@ library(readr)
 library (dplyr)
 library(plotly)
 library(mgcv)
+library(ggplot2)
+library(forcats)
 
 
 source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
@@ -81,10 +83,115 @@ Underdog_Analysis <- Matches_final_Spread %>%
     by = c("SeasonMatchNumber", "TeamID" = "Team")
   )
 
+############################ Observed Data Table Summary | Underdog Hypothesis ############################
+
+spread_cutoff <- 7 #arbitrary spread number: I like 7 because it separates the table in half (1st rank team playing against bottom half of table)
+
+# Categorize real match data into underdog/favored + touch level
+Underdog_Observed_Summary <- Underdog_Analysis %>%
+  filter(!is.na(GoalDiff) & !is.na(ScaledTouch) & !is.na(Spread)) %>%  # ensure clean data
+  mutate(
+    SpreadGroup = case_when(
+      Spread <= -spread_cutoff ~ "Major Underdog",
+      Spread > -spread_cutoff & Spread < 0 ~ "Mild Underdog",
+      Spread == 0 ~ "Even",
+      Spread > 0 & Spread < spread_cutoff ~ "Mild Favorite",
+      Spread >= spread_cutoff ~ "Major Favorite"
+    ),
+    TouchGroup = case_when(
+      ScaledTouch >= 1 ~ "High Touch",
+      ScaledTouch <= -1 ~ "Low Touch",
+      TRUE ~ "Average Touch"
+    )
+  ) %>%
+  group_by(SpreadGroup, TouchGroup) %>%
+  summarise(
+    MeanObservedGD = mean(GoalDiff, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(SpreadGroup, TouchGroup)
+
+#Bar chart for this data: I think easier to understand than the cool looking 3D chart generated below.
+# Set factor levels for order
+spread_levels <- c("Major Underdog", "Mild Underdog", "Even", "Mild Favorite", "Major Favorite")
+touch_levels <- c("Low Touch", "Average Touch", "High Touch")
+
+# Make sure SpreadGroup and TouchGroup are ordered
+Underdog_Observed_Summary <- Underdog_Observed_Summary %>%
+  mutate(
+    SpreadGroup = factor(SpreadGroup, levels = spread_levels),
+    TouchGroup = factor(TouchGroup, levels = touch_levels)
+  )
+
+# Plot observed data
+ggplot(Underdog_Observed_Summary, aes(x = SpreadGroup, y = MeanObservedGD, fill = TouchGroup)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  geom_text(
+    aes(label = paste0("n=", n)),
+    position = position_dodge(width = 0.8),
+    vjust = ifelse(Underdog_Observed_Summary$MeanObservedGD >= 0, -0.5, 1.2),
+    size = 3.5
+  ) +
+  scale_fill_brewer(palette = "Blues") +
+  labs(
+    title = "Observed Goal Differential by Underdog/Favorite Status and Touch Level",
+    x = "Underdog/Favorite Status (Spread Group)",
+    y = "Mean Goal Differential",
+    fill = "Touch Level"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Statistically compare goal differentials across spreadgroup and touchgroup
+# Via a two-way ANOVa 
+# Make sure grouping variables are factors
+Underdog_Observed_ANOVA <- Underdog_Analysis %>%
+  filter(!is.na(GoalDiff) & !is.na(ScaledTouch) & !is.na(Spread)) %>%
+  mutate(
+    SpreadGroup = case_when(
+      Spread <= -spread_cutoff ~ "Major Underdog",
+      Spread > -spread_cutoff & Spread < 0 ~ "Mild Underdog",
+      Spread == 0 ~ "Even",
+      Spread > 0 & Spread < spread_cutoff ~ "Mild Favorite",
+      Spread >= spread_cutoff ~ "Major Favorite"
+    ),
+    TouchGroup = case_when(
+      ScaledTouch >= 1 ~ "High Touch",
+      ScaledTouch <= -1 ~ "Low Touch",
+      TRUE ~ "Average Touch"
+    ),
+    SpreadGroup = factor(SpreadGroup, levels = spread_levels),
+    TouchGroup = factor(TouchGroup, levels = touch_levels)
+  )
+
+# Run Two-Way ANOVA
+anova_result <- aov(GoalDiff ~ SpreadGroup * TouchGroup, data = Underdog_Observed_ANOVA)
+summary(anova_result)
+TukeyHSD(anova_result)
+
+#Summary Table of Means and SDs per Group
+Underdog_Observed_ANOVA %>%
+  group_by(SpreadGroup, TouchGroup) %>%
+  summarise(
+    Mean_GD = mean(GoalDiff, na.rm = TRUE),
+    SD_GD = sd(GoalDiff, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(SpreadGroup, TouchGroup)
+
+#ANOVA categorically dos not say that spread AND touch together affects goal differential
+#It does say that underdogs are more likely to lose (duh) and that more touch is better (duh)
+#Look at GAM Model to see other stuff, there it creates a a relationship between the three values
+
 ############################ GAM Model | Underdog Hypothesis ############################
 
+#This is asking: If a team is more/less touchy than usual, and they are underdog/overdog, how does this impact the goal differenetial?
+
 # Fit GAM model to allow for nonlinear effects
-# Changing k = 15 creates completely flate slope
+
+# Changing k = 15 creates completely flatens slope
 gam_model <- gam(
   GoalDiff ~ s(Spread, ScaledTouch, k = 16, bs = "tp"),  # increase k for smoother fit
   data = Underdog_Analysis
@@ -141,23 +248,71 @@ plot_ly() %>%
   )
 
 
-############################ Interpret GAM Model ############################
+############################ GAM Model CATEGORICAL Table Summary (Interpretation of GAM) | Underdog Hypothesis ############################
 
+# Evaluates how a team's goal differential is predicated by a model across a spectrum of two predictors:
+# Predictor One = Ranking Spread
+# Predictor Two = Scaled Touch Deviation (how much more or less physical touch a team used compared to their norm)
 
+# Backpedals to the observed table CATEGORICAL idea. 
 
-# Underdog_Analysis %>%
-#   mutate(
-#     UnderdogGroup = case_when(
-#       Spread < -5 ~ "Major Underdog",
-#       Spread < 0 ~ "Mild Underdog",
-#       Spread == 0 ~ "Equal Rank",
-#       Spread > 0 ~ "Favored"
-#     ),
-#     HighTouch = ScaledTouch > 0
-#   ) %>%
-#   group_by(UnderdogGroup, HighTouch) %>%
-#   summarise(
-#     MeanGD = mean(GoalDiff, na.rm = TRUE),
-#     n = n()
-#   )
+# Define a grid of Spread and ScaledTouch values
+# Create a sequence of 100 evenly spaced values from smallest to largest spread
+spread_vals <- seq(min(Underdog_Analysis$Spread, na.rm = TRUE),
+                   max(Underdog_Analysis$Spread, na.rm = TRUE),
+                   length.out = 100)
 
+# Create a sequence of 100 evenly spaced values from smallest to largest touch
+touch_vals <- seq(min(Underdog_Analysis$ScaledTouch, na.rm = TRUE),
+                  max(Underdog_Analysis$ScaledTouch, na.rm = TRUE),
+                  length.out = 100)
+
+# Create a ten thousand row data frame by combining all hundred by hundred values above
+grid <- expand.grid(Spread = spread_vals, ScaledTouch = touch_vals)
+
+# Predict GoalDiff across the grid on each fake game (ten thousand of them)
+grid$PredictedGoalDiff <- predict(gam_model, newdata = grid)
+
+#Note choice of 7 as the cutoff is somewhat arbitrary
+grid_summary <- grid %>%
+  mutate(
+    SpreadGroup = case_when(
+      Spread <= -spread_cutoff ~ "Major Underdog",
+      Spread > -spread_cutoff & Spread < 0 ~ "Mild Underdog",
+      Spread == 0 ~ "Even",
+      Spread > 0 & Spread < spread_cutoff ~ "Mild Favorite",
+      Spread >= spread_cutoff ~ "Major Favorite"
+    ),
+    TouchGroup = case_when(
+      ScaledTouch >= 1 ~ "High Touch",
+      ScaledTouch <= -1 ~ "Low Touch",
+      TRUE ~ "Average Touch"
+    )
+  ) %>%
+  group_by(SpreadGroup, TouchGroup) %>%
+  summarise(
+    MeanPredGD = mean(PredictedGoalDiff, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(SpreadGroup, TouchGroup)
+
+#Bar graph to see the GAM model major/mild underdogs versus tables
+# Set same factor levels for consistency
+grid_summary <- grid_summary %>%
+  mutate(
+    SpreadGroup = factor(SpreadGroup, levels = spread_levels),
+    TouchGroup = factor(TouchGroup, levels = touch_levels)
+  )
+
+# Plot GAM model data
+ggplot(grid_summary, aes(x = SpreadGroup, y = MeanPredGD, fill = TouchGroup)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  scale_fill_brewer(palette = "Blues") +
+  labs(
+    title = "GAM Model Predicted Goal Differential by Underdog/Favorite Status and Touch Level",
+    x = "Underdog/Favorite Status (Spread Group)",
+    y = "Predicted Goal Differential",
+    fill = "Touch Level"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
