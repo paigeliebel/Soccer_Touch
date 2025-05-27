@@ -210,6 +210,7 @@ grid$GoalDiff <- predict(gam_model, newdata = grid)
 z_matrix <- matrix(grid$GoalDiff, nrow = length(spread_seq), ncol = length(touch_seq))
 
 # 3D Plot
+#Note: Each dot represents one match outcome for a team, therefore 2 dots for each match
 plot_ly() %>%
   add_surface(
     x = ~spread_seq,

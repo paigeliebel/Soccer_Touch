@@ -70,7 +70,8 @@ ggplot(Touch_GoalDiff_Analysis, aes(x = ScaledAboveAvg, y = GoalDiff)) +
   labs(
     title = "Touch Count Deviation vs Match Goal Differential",
     x = "Touches Above/Below Team Average",
-    y = "Goal Differential"
+    y = "Goal Differential",
+    caption = "Note: Each dot represents one match outcome for a team, therefore 2 dots for each match"
   ) +
   theme_minimal()
 

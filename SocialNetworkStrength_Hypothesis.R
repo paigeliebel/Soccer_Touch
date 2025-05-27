@@ -13,6 +13,7 @@ library(plotly)
 library(mgcv)
 library(ggplot2)
 library(forcats)
+library(ggridges)
 
 
 source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
@@ -38,6 +39,12 @@ Touches_Reciprocal <- Touches_final %>%
     Team = as.character(Team),
     Reciprocity = str_trim(Reciprocal) #cleans up white spaces in case
   )
+
+
+############################ Reciprocal/Non-Reciprocal | Social Network Strength ############################
+
+#Reciprocal vs non-reciprocal touch | simple final standings to ratio of reciprocal/non-reciprocal
+#Exclude Injury Touch because it is usually uni-direcitonal, injured player does not touch back
 
 # Count touches by team and reciprocity type
 Reciprocity_by_Team <- Touches_Reciprocal %>%
@@ -75,6 +82,7 @@ ggplot(Reciprocal_vs_Rank, aes(x = Rank, y = Reciprocal_To_NonRecip_Ratio)) +
   labs(
     title = "Reciprocal Touch Ratio vs Final Season Rank per Team",
     subtitle = "Higher ratios may reflect stronger intra-team cohesion",
+    caption = "Note: Each dot represents one team",
     x = "Team Final Season Rank",
     y = "Team Touch Ratio (Reciprocal : Non-Reciprocal)",
   ) +
@@ -84,13 +92,189 @@ ggplot(Reciprocal_vs_Rank, aes(x = Rank, y = Reciprocal_To_NonRecip_Ratio)) +
 reciprocal_lm <- lm(Rank ~ Reciprocal_To_NonRecip_Ratio, data = Reciprocal_vs_Rank)
 
 
-############################ Reciprocal/Non-Reciprocal | Social Network Strength ############################
-
-#Reciprocal vs non-reciprocal touch | simple final standings to ratio of reciprocal/non-reciprocal
-#Exclude Injury Touch because it is usually uni-direcitonal, injured player does not touch back
-
-
 ############################ Player Concentration | Social Network Strength ############################
 
 #concentration of touch within players on a team could be a metric for overall team cohesion | ridge plot
-#include injur-touch because we are looking at how touchy some players are
+#include injured-touch because we are looking at how touchy some players are
+
+#Creates Dataframe that Flags values that don't match with requirements of strings, jersey numbers, G, SU, ??
+#Cleans common typos (which were many)
+Touches_players_flagged <- Touches_final %>%
+  mutate(
+    ToucherNumber = as.character(ToucherNumber),
+    ToucheeNumber = as.character(ToucheeNumber),
+    PlayersInvolved = as.character(PlayersInvolved),
+    PlayersInvolved = PlayersInvolved %>%
+      str_replace_all("\\.\\s+", ",") %>%           # fix "10. 12" → "10,12"
+      str_remove_all("[\"'`:;.`]") %>%              # Remove unwanted punctuation
+      str_replace_all("\\s*,\\s*", ",") %>%         # Normalize commas and spacing
+      str_replace_all("\\s+", "") %>%               # Remove stray spaces
+      str_replace_all("(?<=\\d{2})(?=\\d{2}$)", ",") %>%       # Insert comma in "1210" → "12,10"
+      str_replace(",+$", "") %>%                    # Remove trailing commas
+      str_trim(),                                   # Clean up leading/trailing space 
+     
+    
+    # Valid if it's a number, "G", "SU", or "??"
+    ToucherNumber_Valid = str_detect(ToucherNumber, "^\\d{1,2}$|^G$|^SU$|^\\?\\?$"),
+    ToucheeNumber_Valid = str_detect(ToucheeNumber, "^\\d{1,2}$|^G$|^SU$|^\\?\\?$"),
+    
+    # Valid PlayersInvolved: at least two elements (numbers or ?? or SU), comma-separated
+    PlayersInvolved_List = str_split(PlayersInvolved, ",\\s*"),
+    PlayersInvolved_Valid = map_lgl(PlayersInvolved_List, function(players) {
+      cleaned <- str_trim(players)
+      all_valid <- all(str_detect(cleaned, "^\\d+$|^\\?\\?$|^SU$"))
+      has_multiple <- length(cleaned) >= 2
+      all_valid && has_multiple
+    })
+  )
+
+#Splits "12,04,09" back into "12, 04, 09"
+Touches_players_flagged <- Touches_players_flagged %>%
+  mutate(PlayersInvolved = str_split(PlayersInvolved, ","))
+
+#Ignore those flagged values for now (fix them before final paper)
+Touches_players_final <- Touches_players_flagged %>%
+  filter(
+    ToucherNumber_Valid,
+    ToucheeNumber_Valid,
+    PlayersInvolved_Valid
+  )
+
+#########Histograms for Toucher by team (creates 14 histograms for team by team analysis)
+
+# Count number of times each player was the Toucher within each team
+toucher_counts <- Touches_players_final %>%
+  filter(!is.na(ToucherNumber) & ToucherNumber != "G") %>%
+  group_by(Team, ToucherNumber) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
+ggplot(toucher_counts, aes(x = ToucherNumber, y = TouchCount)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ Team, scales = "free_x") +
+  labs(
+    title = "Toucher Frequency by Player Jersey Number",
+    x = "Player (ToucherNumber)",
+    y = "Number of Touches"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5),
+    strip.text = element_text(face = "bold")
+  )
+
+#########Histograms for Touchee by team (creates 14 histograms for team by team analysis)
+
+# Count number of times each player was the Touchee within each team
+touchee_counts <- Touches_players_final %>%
+  filter(!is.na(ToucheeNumber) & ToucheeNumber != "G") %>%
+  group_by(Team, ToucheeNumber) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
+ggplot(touchee_counts, aes(x = ToucheeNumber, y = TouchCount)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ Team, scales = "free_x") +
+  labs(
+    title = "Touchee Frequency by Player Jersey Number",
+    x = "Player (ToucheeNumber)",
+    y = "Number of Touches"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5),
+    strip.text = element_text(face = "bold")
+  )
+
+#########Histograms for players involved in any touch event, as toucher, touchee or group (creates 14 histograms for team by team analysis)
+
+# Properly split and unnest
+player_counts <- Touches_players_final %>%
+  select(Team, PlayersInvolved) %>%
+  separate_rows(PlayersInvolved, sep = ",\\s*") %>%
+  mutate(PlayersInvolved = str_trim(PlayersInvolved)) %>%
+  filter(PlayersInvolved != "") %>%
+  group_by(Team, PlayersInvolved) %>%
+  summarise(TouchCount = n(), .groups = "drop") %>%
+  arrange(Team, desc(TouchCount))
+
+ggplot(player_counts, aes(x = fct_reorder(PlayersInvolved, -TouchCount), y = TouchCount)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ Team, scales = "free_x") +
+  labs(
+    title = "Player Touch Involvement (PlayersInvolved Column)",
+    subtitle = "Each bar shows one player's total involvement across the season",
+    x = "Player Jersey / Code",
+    y = "Touch Count"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8),
+    strip.text = element_text(face = "bold")
+  )
+
+#########Histograms for players involved in group events by team (creates 14 histograms for team by team analysis)
+
+#Filters for just rows that contain the "G"
+group_touches <- Touches_players_final %>%
+  filter(ToucherNumber == "G")
+
+player_counts_groupsanalysis <- group_touches %>%
+  select(Team, PlayersInvolved, ToucherNumber) %>%
+  separate_rows(PlayersInvolved, sep = ",\\s*") %>%
+  mutate(PlayersInvolved = str_trim(PlayersInvolved)) %>%
+  filter(PlayersInvolved != "") %>%
+  group_by(Team, PlayersInvolved) %>%
+  summarise(TouchCount = n(), .groups = "drop") %>%
+  arrange(Team, desc(TouchCount))
+
+#Plots
+ggplot(player_counts_groupsanalysis, aes(x = PlayersInvolved, y = TouchCount)) +
+  geom_col(fill = "steelblue") +
+  facet_wrap(~ Team, scales = "free_x") +
+  labs(
+    title = "Player Involvement in Group Events (Touches_final)",
+    subtitle = "Each bar shows a player's total involvement in group touches",
+    x = "Player Jersey",
+    y = "Group Touch Count"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+#########Ridge plot that shows touchiest players stacked on top of each other by team (one plot for all 14 teams)
+
+# Build long-format player count data (from cleaned PlayersInvolved)
+player_ridgeplot_counts <- Touches_players_final %>%
+  select(Team, PlayersInvolved) %>%
+  separate_rows(PlayersInvolved, sep = ",\\s*") %>%
+  mutate(PlayersInvolved = str_trim(PlayersInvolved)) %>%
+  filter(PlayersInvolved != "") %>%
+  group_by(Team, PlayersInvolved) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
+# Assign within-team ranks (1 = most touchy)
+player_ridgeplot_counts <- player_ridgeplot_counts %>%
+  group_by(Team) %>%
+  arrange(desc(TouchCount)) %>%
+  mutate(
+    TouchiestRank = row_number()  # Numeric: 1 = most touchy
+  ) %>%
+  ungroup()
+
+# Plot ridge plot using numeric ranks
+ggplot(player_ridgeplot_counts, aes(x = TouchiestRank, y = fct_rev(Team), height = TouchCount, group = Team)) +
+  geom_ridgeline(stat = "identity", fill = "steelblue", color = "white", alpha = 0.8, scale = 0.9) +
+  scale_x_continuous(breaks = 1:10, expand = c(0.01, 0)) +
+  labs(
+    title = "Player Touch Involvement Ridge Plot by Team",
+    subtitle = "1 = Most Involved Player on Each Team",
+    x = "Player Touch Rank (1 = Most Involved)",
+    y = "Team"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    axis.text.y = element_text(size = 8),
+    plot.title = element_text(face = "bold")
+  )
+
+#bring to front the flatest (least amount of spikes) #also only 1 through 10? why?
+
