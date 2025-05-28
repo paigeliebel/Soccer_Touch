@@ -1,0 +1,155 @@
+#Cleaning up and Extracting Info from the Match_Performance Sheet
+#Goal to get:
+#Minutes Played for each player
+#Minutes played by each team
+#Penalty Kick Info
+
+library(tidyverse)
+library(data.table)
+library(broom)
+library(janitor)
+library(readxl)
+library(rmarkdown)
+library(readr)
+library (dplyr)
+library(plotly)
+library(mgcv)
+library(ggplot2)
+library(forcats)
+library(ggridges)
+library(DescTools)
+library(tidyr)
+
+source("Data_Management.R") #Runs and brings in Matches_final from Data_Management.R script
+
+############################ Overall Team Data ############################
+#Info Team by Team
+Matches_ID <- Matches_final %>%
+  mutate(
+    MatchID = str_pad(MatchID, width = 4, pad = "0"),  # in case it was shortened
+    TeamID = str_sub(MatchID, 1, 2),
+    Substitutes = str_replace_all(Substitutes, "\\.", ",")
+  )
+
+team_minutesplayed <- Matches_ID %>% 
+  mutate(
+    MatchLength = as.numeric(MatchLength)  # Convert to numeric
+  ) %>%
+  group_by(TeamID) %>%
+    summarise(
+      TotalMinutesPlayed = sum(MatchLength, na.rm = TRUE),
+      MatchCount = n()
+    ) %>%
+    arrange(desc(TotalMinutesPlayed))
+
+#Formations teams played
+formation_counts <- Matches_ID %>%
+  group_by(TeamID, Formation) %>%
+  summarise(FormationCount = n(), .groups = "drop") %>%
+  pivot_wider(
+    names_from = Formation,
+    values_from = FormationCount,
+    values_fill = 0  # Fill in 0 if a team never used a certain formation
+  )
+
+############################ Overall League Data ############################
+
+#Most Popular Formations
+popular_formations <- Matches_ID %>%
+  group_by(Formation) %>%
+  summarise(TimesUsed = n(), .groups = "drop") %>%
+  arrange(desc(TimesUsed))
+
+############################ Player Data ############################
+
+#Determine how many minutes each player played
+
+#First determine the starters across the season for each team
+starter_players <- Matches_ID %>%
+  mutate(StarterList = str_split(Starters, ",\\s*")) %>%   # split by comma, trim spaces
+  rowwise() %>%
+  mutate(
+    StarterCount = length(StarterList),
+    StarterFlag = ifelse(StarterCount != 11, TRUE, FALSE)  # flag if not 11
+  ) %>%
+  ungroup() %>%
+  select(TeamID, StarterList, StarterFlag, SeasonMatchNumber, FirstHalfLength, SecondHalfLength) %>%
+  unnest(StarterList) %>%
+  mutate(StarterList = str_trim(StarterList))  # clean whitespace
+
+unique_team_players <- starter_players %>%
+  mutate(StarterList = str_trim(StarterList)) %>%
+  distinct(TeamID, StarterList) %>%
+  rename(Player = StarterList)
+
+flagged_starter_matches <- Matches_ID %>%
+  mutate(
+    StarterList = str_split(Starters, ",\\s*"),
+    StarterCount = lengths(StarterList)
+  ) %>%
+  filter(StarterCount != 11) %>%
+  select(SeasonMatchNumber, FirstHalfLength, SecondHalfLength, TeamID, StarterCount, Starters)
+
+#Determine the Subs and add them to the starters
+subs_exploded <- Matches_ID %>%
+  select(SeasonMatchNumber, FirstHalfLength, SecondHalfLength, TeamID, Substitutes) %>%
+  filter(!is.na(Substitutes) & Substitutes != "") %>%
+  mutate(
+    Substitutes = str_split(Substitutes, ",\\s*")) %>%
+  unnest(Substitutes)
+
+#Parse the substitution strings into their parts
+subs_parsed <- subs_exploded %>%
+  mutate(
+    SubIn   = str_sub(Substitutes, 1, 2),
+    SubOut  = str_sub(Substitutes, 3, 4),
+    Half    = str_sub(Substitutes, 5, 5),
+    Minute  = as.numeric(str_sub(Substitutes, 6, 8))
+  ) %>%
+  select(SeasonMatchNumber, FirstHalfLength, SecondHalfLength, TeamID, Substitutes, SubIn, SubOut, Half, Minute)
+
+#Sub issues to flag
+sub_issues <- Matches_ID %>%
+  mutate(SeasonMatchNumber = as.character(SeasonMatchNumber)) %>%
+  separate_rows(Substitutes, sep = ",\\s*") %>%
+  filter(Substitutes != "") %>%
+  mutate(Flag = !str_detect(Substitutes, "^\\d{8}$")) %>%  # Expect 8 digits exactly
+  filter(Flag) %>%
+  select(SeasonMatchNumber, Substitutes)
+
+# Now filter out bad sub entries (those not 8 digits)
+subs_parsed_clean <- subs_parsed %>%
+  anti_join(sub_issues, by = c("SeasonMatchNumber", "Substitutes"))
+
+# Get all distinct subbed-in players per team
+subbed_in_players <- subs_parsed_clean %>%
+  select(TeamID, SubIn) %>%
+  distinct() %>%
+  rename(Player = SubIn)
+
+unique_sub_players <- subs_parsed_clean %>%
+  mutate(SubIn = str_trim(SubIn)) %>%                 # <- trim here too
+  distinct(TeamID, SubIn) %>%
+  rename(Player = SubIn)
+
+# Combine starters and subbed-in players
+all_unique_team_players <- bind_rows(unique_team_players, unique_sub_players) %>%
+  mutate(
+    Player = str_trim(Player),
+    PlayerCharLength = nchar(Player)
+  ) %>%
+  distinct(TeamID, Player, PlayerCharLength)
+
+#Give a complete list of each jersey number that shows up for a team
+# Group players by team and nest them into a list column
+team_player_lists <- all_unique_team_players %>%
+  mutate(Player = as.character(str_trim(Player))) %>%  # Clean and ensure characters
+  group_by(TeamID) %>%
+  summarise(
+    PlayerList = paste(sort(unique(Player)), collapse = ", "),
+    .groups = "drop"
+  )
+
+#Okay so now I have a list of unique values.... lists of players and some other dataframes.
+#Now let's figure out how many minutes each player played
+#this may take a while
