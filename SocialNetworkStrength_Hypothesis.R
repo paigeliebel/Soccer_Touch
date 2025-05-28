@@ -14,7 +14,7 @@ library(mgcv)
 library(ggplot2)
 library(forcats)
 library(ggridges)
-
+library(DescTools)
 
 source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
 source("Core_Hypothesis.R") #Runs and brings in data frames from Core_Hypothesis.R script
@@ -44,7 +44,6 @@ Touches_Reciprocal <- Touches_final %>%
 ############################ Reciprocal/Non-Reciprocal | Social Network Strength ############################
 
 #Reciprocal vs non-reciprocal touch | simple final standings to ratio of reciprocal/non-reciprocal
-#Exclude Injury Touch because it is usually uni-direcitonal, injured player does not touch back
 
 # Count touches by team and reciprocity type
 Reciprocity_by_Team <- Touches_Reciprocal %>%
@@ -93,6 +92,34 @@ reciprocal_lm <- lm(Rank ~ Reciprocal_To_NonRecip_Ratio, data = Reciprocal_vs_Ra
 
 
 ############################ Player Concentration | Social Network Strength ############################
+
+
+#I feel like if we are looking at distribution we definitely have to scale for time-played.
+#Players who touch less but only played 20 minutes across the season needs to have less weight
+#But, then I also need to make sure a player wo only played 20 minutes and touched a bunch doesn't throw it all ooff
+#I want to weigh both touch per minute and amount of minutes played?
+#I want to scale for playing time, but not let tiny-sample outliers (e.g., someone who touched the ball 12 times in a 20-minute cameo) dominate the metric.
+
+#Options include a shrinkage factor: AdjustedTouchesPer90 = (Touches / MinutesPlayed) * 90 * log1p(MinutesPlayed)
+#Touches / MinutesPlayed * 90 = standard touches per 90
+#log1p(MinutesPlayed) = soft weigh
+
+
+
+
+#Everything below needs to get looked at again with the above concern addressed!
+
+
+
+
+
+
+
+
+
+
+
+
 
 #concentration of touch within players on a team could be a metric for overall team cohesion | ridge plot
 #include injured-touch because we are looking at how touchy some players are
@@ -259,14 +286,24 @@ player_ridgeplot_counts <- player_ridgeplot_counts %>%
   ) %>%
   ungroup()
 
+# Calculate standard deviation of TouchCount per team
+team_SD <- player_ridgeplot_counts %>%
+  group_by(Team) %>%
+  summarise(TouchSD = sd(TouchCount), .groups = "drop")
+
+# Step 2: Reorder Team factor based on flatness (ascending)
+player_ridgeplot_counts <- player_ridgeplot_counts %>%
+  left_join(team_SD, by = "Team") %>%
+  mutate(Team = fct_reorder(Team, TouchSD, .desc = FALSE))  # flattest first
+
 # Plot ridge plot using numeric ranks
 ggplot(player_ridgeplot_counts, aes(x = TouchiestRank, y = fct_rev(Team), height = TouchCount, group = Team)) +
   geom_ridgeline(stat = "identity", fill = "steelblue", color = "white", alpha = 0.8, scale = 0.9) +
-  scale_x_continuous(breaks = 1:10, expand = c(0.01, 0)) +
+  scale_x_continuous(breaks = 1:50, expand = c(0.01, 0)) +
   labs(
     title = "Player Touch Involvement Ridge Plot by Team",
-    subtitle = "1 = Most Involved Player on Each Team",
-    x = "Player Touch Rank (1 = Most Involved)",
+    subtitle = "Teams ordered front-to-back from flattest to most peaked touch distributions",
+    x = "Player Touch Rank within Team (1 = Most Involved)",
     y = "Team"
   ) +
   theme_minimal() +
@@ -276,5 +313,121 @@ ggplot(player_ridgeplot_counts, aes(x = TouchiestRank, y = fct_rev(Team), height
     plot.title = element_text(face = "bold")
   )
 
-#bring to front the flatest (least amount of spikes) #also only 1 through 10? why?
+#Unstacked Ridge plot
+ggplot(player_ridgeplot_counts, aes(x = TouchiestRank, y = Team, height = TouchCount, group = Team)) +
+  geom_density_ridges(stat = "identity", scale = 1.5, fill = "steelblue", alpha = 0.7) +
+  labs(
+    title = "Distribution of Player Touch Involvement by Team",
+    subtitle = "Teams ordered from flattest to most peaked distribution",
+    x = "Player Touchiness Rank (1 = Most Involved)",
+    y = "Team"
+  ) +
+  theme_minimal()
 
+############################ Player Concentration | Social Network Strength to Final Standings ############################
+
+# Merge flatness, player touchiness, and season rank into player data
+player_touchiness_rank <- player_ridgeplot_counts %>%
+  left_join(
+    FinalStandings %>% select(TeamID, Rank),
+    by = c("Team" = "TeamID")  # Match Team to TeamID
+  )
+
+player_touchiness_rank <- player_touchiness_rank %>%
+  mutate(
+    Team = factor(Team),
+    Team = fct_reorder(Team, Rank, .desc = FALSE)  # Rank 1 at top/front
+  )
+
+#filter to only top 20 players of touchiness... tails too long
+player_touchiness_rank_top <- player_touchiness_rank %>%
+  filter(TouchiestRank <= 20)
+
+# Ridge plot (non-stacked), teams ordered by final season standings
+ggplot(player_touchiness_rank_top, aes(x = TouchiestRank, y = Team, height = TouchCount, group = Team)) +
+  geom_density_ridges(stat = "identity", scale = 1.5, fill = "steelblue", alpha = 0.7) +
+  labs(
+    title = "Distribution of Player Touch Involvement by Team",
+    subtitle = "Teams ordered by final season standings (Bottom of y-axis is 1st ranked team)",
+    x = "Player Touchiness Rank (1 = Most Involved)",
+    y = "Team"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    axis.text.y = element_text(size = 8),
+    plot.title = element_text(face = "bold")
+  )
+
+#plot team flatness SD to final season rank in a simple scatter plot
+#low standard deviation = flatter distribution (single players do not dominate touch interactions)
+team_SD_rank <- team_SD %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID"))
+
+team_cv <- player_touchiness_rank %>%
+  group_by(Team) %>%
+  summarise(
+    MeanTouches = mean(TouchCount),
+    SDTouches = sd(TouchCount),
+    CV = SDTouches / MeanTouches,
+    .groups = "drop"
+  )
+
+team_cv_rank <- team_cv %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID"))
+
+#Look at CV (Coefficient of Variation): CV = SD / Mean -- normalized level of spread
+# Plot scatter
+ggplot(team_cv_rank, aes(x = Rank, y = CV)) +
+  geom_point(size = 3, color = "darkred") +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  scale_x_reverse(breaks = 1:max(team_SD_rank$Rank)) +  # Lower rank = better
+  labs(
+    title = "Touch Concentration vs Final Season Rank",
+    subtitle = "Higher SD = touches concentrated in fewer players",
+    x = "Final Season Rank (1 = Best)",
+    y = "Touch Count Standard Deviation (Per Team)"
+  ) +
+  theme_minimal()
+
+#Gini Coefficient
+team_gini <- player_touchiness_rank %>%
+  group_by(Team) %>%
+  summarise(
+    Gini = Gini(TouchCount),
+    .groups = "drop"
+  )
+
+#Percentage of touches from top 3 touchiest players
+# Step 1: Sum total touches per team
+team_total_touches <- player_touchiness_rank %>%
+  group_by(Team) %>%
+  summarise(TotalTouches = sum(TouchCount), .groups = "drop")
+
+# Step 2: Get top 3 players per team and their touch count
+top3_touches <- player_touchiness_rank %>%
+  group_by(Team) %>%
+  arrange(desc(TouchCount)) %>%
+  slice_head(n = 11) %>%  # top 3 players
+  summarise(Top3Touches = sum(TouchCount), .groups = "drop")
+
+# Step 3: Merge and calculate proportion
+touch_concentration <- top3_touches %>%
+  left_join(team_total_touches, by = "Team") %>%
+  mutate(Top3_Proportion = Top3Touches / TotalTouches)
+
+# Step 4 (Optional): Join with final standings to analyze relationship
+touch_concentration <- touch_concentration %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID"))
+
+ggplot(touch_concentration, aes(x = Rank, y = Top3_Proportion)) +
+  geom_point(size = 3, color = "darkblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  scale_x_reverse(breaks = 1:max(touch_concentration$Rank)) +
+  labs(
+    title = "Touch Concentration in Top 3 Players vs Final Season Rank",
+    subtitle = "Higher values = more concentrated touch behavior in fewer players",
+    x = "Final Season Rank (1 = Best)",
+    y = "Proportion of Team Touches by Top 3 Players"
+  ) +
+  theme_minimal()
