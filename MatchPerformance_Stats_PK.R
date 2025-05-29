@@ -216,3 +216,64 @@ match_player_entries <- match_player_entries %>%
 
 match_player_entries <- match_player_entries %>%
   left_join(sub_out_info, by = c("SeasonMatchNumber", "TeamID", "Player"))
+
+#create a function to turn everything into seconds
+convert_mmss_to_seconds <- function(mmss) {
+  mm <- floor(mmss / 100)
+  ss <- mmss %% 100
+  mm * 60 + ss
+}
+
+#Convert everything to numeric
+match_player_entries <- match_player_entries %>%
+  mutate(
+    FirstHalfLength = as.numeric(FirstHalfLength),
+    SecondHalfLength = as.numeric(SecondHalfLength),
+    SubbedInMinute = as.numeric(SubbedInMinute),
+    SubbedOutMinute = as.numeric(SubbedOutMinute)
+  )
+
+# Apply to your data frame
+match_player_entries <- match_player_entries %>%
+  mutate(
+    FirstHalfSeconds = convert_mmss_to_seconds(FirstHalfLength),
+    SecondHalfSeconds = convert_mmss_to_seconds(SecondHalfLength)
+  )
+
+#Let's do math to figure out how many seconds each player played
+match_player_entries <- match_player_entries %>%
+  mutate(
+    SubInOutConflict = if_else(
+      WasPlayerSubbedIn == "Y" & WasPlayerSubbedOut == "Y",
+      TRUE, FALSE
+    )
+  ) %>% 
+  mutate(
+    MatchSecondsPlayed = case_when(
+      # Not subbed in and not subbed out → full match
+      WasPlayerSubbedIn == "N" & WasPlayerSubbedOut == "N" ~ (FirstHalfSeconds + SecondHalfSeconds),
+      
+      # Not subbed in and subbed out in 1st half
+      WasPlayerSubbedIn == "N" & WasPlayerSubbedOut == "Y" & SubbedOutHalf == "1" ~
+        if_else(SubbedOutMinute == 46, FirstHalfSeconds, (SubbedOutMinute * 60)),
+      
+      # Not subbed in and subbed out in 2nd half
+      WasPlayerSubbedIn == "N" & WasPlayerSubbedOut == "Y" & SubbedOutHalf == "2" ~
+        if_else(SubbedOutMinute == 46,
+                FirstHalfSeconds,
+                (FirstHalfSeconds + ((SubbedOutMinute - 45)*60))),
+      
+      # Subbed in and subbed in 1st half
+      WasPlayerSubbedIn == "Y" & WasPlayerSubbedOut == "N" & SubbedInHalf == "1" ~
+        if_else(SubbedInMinute == 46, convert_mmss_to_seconds(SecondHalfLength), 
+                (SecondHalfSeconds + (FirstHalfSeconds - (SubbedInMinute*60)))),
+      
+      # Subbed in and subbed in 2nd half
+      WasPlayerSubbedIn == "Y" & WasPlayerSubbedOut == "N" & SubbedInHalf == "2" ~
+        if_else(SubbedInMinute == 46, SecondHalfSeconds, 
+                (SecondHalfSeconds - ((SubbedInMinute - 45)*60))),
+      
+      TRUE ~ NA_real_  # For now, mark all other cases (e.g. subbed in) as NA
+    )
+  )
+
