@@ -102,6 +102,7 @@ subs_exploded <- Matches_ID %>%
 
 #Parse the substitution strings into their parts
 subs_parsed <- subs_exploded %>%
+  filter(str_detect(Substitutes, "^\\d{8}$")) %>%  # Keep only well-formed subs
   mutate(
     SubIn   = str_sub(Substitutes, 1, 2),
     SubOut  = str_sub(Substitutes, 3, 4),
@@ -196,20 +197,23 @@ match_player_entries <- match_player_entries %>%
     )
   )
 
-#Bring back in Match half length columns
+Matches_ID_unique <- Matches_ID %>%
+  mutate(SeasonMatchNumber = as.character(SeasonMatchNumber)) %>%
+  select(SeasonMatchNumber, TeamID, FirstHalfLength, SecondHalfLength) %>%
+  distinct()
+
+# Now join safely by both SeasonMatchNumber and TeamID
 match_player_entries <- match_player_entries %>%
-  left_join(
-    Matches_ID %>% select(SeasonMatchNumber, FirstHalfLength, SecondHalfLength),
-    by = "SeasonMatchNumber"
-  )
+  mutate(SeasonMatchNumber = as.character(SeasonMatchNumber)) %>%
+  left_join(Matches_ID_unique, by = c("SeasonMatchNumber", "TeamID"))
 
 # First, extract only relevant sub-in/out info
 sub_in_info <- subs_parsed_clean %>%
   select(SeasonMatchNumber, TeamID, Player = SubIn, SubbedInHalf = Half, SubbedInMinute = Minute)
-
+  
 sub_out_info <- subs_parsed_clean %>%
   select(SeasonMatchNumber, TeamID, Player = SubOut, SubbedOutHalf = Half, SubbedOutMinute = Minute)
-
+  
 # Now, join it to match_player_metrics for only those who were subbed in/out
 match_player_entries <- match_player_entries %>%
   left_join(sub_in_info, by = c("SeasonMatchNumber", "TeamID", "Player"))
@@ -276,4 +280,21 @@ match_player_entries <- match_player_entries %>%
       TRUE ~ NA_real_  # For now, mark all other cases (e.g. subbed in) as NA
     )
   )
+
+#Now I have seconds played. Add that up for each player over the season.
+player_season_totals <- match_player_entries %>%
+  group_by(TeamID, Player) %>%
+  summarise(
+    TotalSecondsPlayed = sum(MatchSecondsPlayed, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(desc(TotalSecondsPlayed))
+
+
+duplicates <- match_player_entries %>%
+  group_by(SeasonMatchNumber, TeamID, Player) %>%
+  filter(n() > 1) %>%
+  arrange(SeasonMatchNumber, TeamID, Player)
+
+
 

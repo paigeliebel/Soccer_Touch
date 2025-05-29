@@ -270,9 +270,9 @@ Touches_invalid_rater2 <- Touches_invalid_labeled[["Rater2"]]
 #Do this to both the Matches and Touches Dataframs (has to happen twice)
 
 #Define match assignments
-InterRaterMatches_Rater1 <- c(127, 115, 26, 87) #Paige
-InterRaterMatches_Rater2 <- c(114, 39, 163, 42) #Tobi
-InterRaterMatches_Rater3 <- c(95, 150, 38, 160) #Simon
+InterRaterMatches_Rater1 <- c("127", "115", "26", "87") #Paige
+InterRaterMatches_Rater2 <- c("114", "39", "163", "42") #Tobi
+InterRaterMatches_Rater3 <- c("95", "150", "38", "160") #Simon
 
 #Combine all 12 interrater matches with rater mapping
 interrater_assignments <- tibble(
@@ -286,11 +286,11 @@ interrater_assignments <- tibble(
 interrater_assignments <- interrater_assignments %>%
   mutate(SeasonMatchNumber = as.character(SeasonMatchNumber))
 
-Matches <- Matches %>%
-  mutate(SeasonMatchNumber = as.character(SeasonMatchNumber))
-
 Touches <- Touches %>%
-  mutate(SeasonMatchNumber = as.character(SeasonMatchNumber))
+  mutate(SeasonMatchNumber = str_remove(as.character(SeasonMatchNumber), "^0+")) #removes leading zeros
+
+Matches <- Matches %>%
+  mutate(SeasonMatchNumber = str_remove(as.character(SeasonMatchNumber), "^0+")) #removes leading zeros
 
 #make new data frame from Touches, if row contains InterRaterMatches_Rater1 and the word rater 1, keep it, otherwise delete row
 
