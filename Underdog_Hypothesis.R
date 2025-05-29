@@ -193,7 +193,7 @@ Underdog_Observed_ANOVA %>%
 
 # Changing k = 15 creates completely flatens slope
 gam_model <- gam(
-  GoalDiff ~ s(Spread, ScaledTouch, k = 16, bs = "tp"),  # increase k for smoother fit
+  GoalDiff ~ s(Spread, ScaledTouch, k = 100, bs = "tp"),  # increase k for smoother fit
   data = Underdog_Analysis
 )
 
@@ -317,3 +317,4 @@ ggplot(grid_summary, aes(x = SpreadGroup, y = MeanPredGD, fill = TouchGroup)) +
   ) +
   theme_minimal() +
   theme(legend.position = "bottom")
+
