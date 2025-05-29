@@ -19,6 +19,8 @@ library(forcats)
 library(ggridges)
 library(DescTools)
 library(tidyr)
+library(purrr)
+
 
 source("Data_Management.R") #Runs and brings in Matches_final from Data_Management.R script
 
@@ -150,6 +152,67 @@ team_player_lists <- all_unique_team_players %>%
     .groups = "drop"
   )
 
-#Okay so now I have a list of unique values.... lists of players and some other dataframes.
-#Now let's figure out how many minutes each player played
-#this may take a while
+#Now Let's figure out minutes played for starters who were not subbed out in a match
+
+# From starter_players: select and rename StarterList to Player
+starter_players_long <- starter_players %>%
+  select(SeasonMatchNumber, TeamID, StarterList) %>%
+  rename(Player = StarterList)
+
+# From subs_parsed_clean: select and rename SubIn to Player
+subins_long <- subs_parsed_clean %>%
+  select(SeasonMatchNumber, TeamID, SubIn) %>%
+  rename(Player = SubIn)
+
+# Combine both into one dataframe, keep distinct values
+match_player_entries <- bind_rows(starter_players_long, subins_long) %>%
+  mutate(Player = str_trim(Player)) %>%   # Clean whitespace just in case
+  distinct()
+
+#pure iteration row by row (inefficient) to see fi player was subbed in/out
+match_player_entries <- match_player_entries %>% 
+  mutate(
+    WasPlayerSubbedIn = pmap_chr(
+      list(SeasonMatchNumber, TeamID, Player),
+      ~ if_else(
+        any(subs_parsed_clean$SeasonMatchNumber == ..1 &
+              subs_parsed_clean$TeamID == ..2 &
+              subs_parsed_clean$SubIn == ..3),
+        "Y", "N"
+      )
+    )
+  )
+
+match_player_entries <- match_player_entries %>%
+  mutate(
+    WasPlayerSubbedOut = pmap_chr(
+      list(SeasonMatchNumber, TeamID, Player),
+      ~ if_else(
+        any(subs_parsed_clean$SeasonMatchNumber == ..1 &
+              subs_parsed_clean$TeamID == ..2 &
+              subs_parsed_clean$SubOut == ..3),
+        "Y", "N"
+      )
+    )
+  )
+
+#Bring back in Match half length columns
+match_player_entries <- match_player_entries %>%
+  left_join(
+    Matches_ID %>% select(SeasonMatchNumber, FirstHalfLength, SecondHalfLength),
+    by = "SeasonMatchNumber"
+  )
+
+# First, extract only relevant sub-in/out info
+sub_in_info <- subs_parsed_clean %>%
+  select(SeasonMatchNumber, TeamID, Player = SubIn, SubbedInHalf = Half, SubbedInMinute = Minute)
+
+sub_out_info <- subs_parsed_clean %>%
+  select(SeasonMatchNumber, TeamID, Player = SubOut, SubbedOutHalf = Half, SubbedOutMinute = Minute)
+
+# Now, join it to match_player_metrics for only those who were subbed in/out
+match_player_entries <- match_player_entries %>%
+  left_join(sub_in_info, by = c("SeasonMatchNumber", "TeamID", "Player"))
+
+match_player_entries <- match_player_entries %>%
+  left_join(sub_out_info, by = c("SeasonMatchNumber", "TeamID", "Player"))
