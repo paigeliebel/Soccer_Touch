@@ -281,6 +281,16 @@ match_player_entries <- match_player_entries %>%
     )
   )
 
+#Add a column with Rater so we know who is having errors
+match_player_entries <- match_player_entries %>%
+  left_join(
+    Matches_final %>%
+      select(SeasonMatchNumber, Rater) %>%
+      distinct(),  # <-- ensures only one row per SeasonMatchNumber-Rater pair
+    by = "SeasonMatchNumber"
+  )
+
+
 #Now I have seconds played. Add that up for each player over the season.
 player_season_totals <- match_player_entries %>%
   group_by(TeamID, Player) %>%

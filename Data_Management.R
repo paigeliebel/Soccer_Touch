@@ -16,8 +16,8 @@ library(readr)
 
 raters <- list(
   Rater1 = list(touch = "Touch_Paige.csv", match = "Match_Paige.csv"),
-  Rater2 = list(touch = "Touch_Tobi.csv",  match = "Match_Tobi.csv")
-  # Rater3 = list(touch = "Touch_Simon.csv", match = "Match_Simon.csv")  # <- uncomment when ready to add Simon's data
+  Rater2 = list(touch = "Touch_Tobi.csv",  match = "Match_Tobi.csv"),
+  Rater3 = list(touch = "Touch_Simon.csv", match = "Match_Simon.csv")  
 )
 
 Touch_Dataframes_List <- map2(names(raters), raters, function(rater_name, files) {
@@ -111,6 +111,7 @@ clean_body_parts <- function(x) {
         "Arn" = "Arm",
         "AH" = "Arm",
         "Hand" = "H",
+        "Foot" = "Feet",
         "Back Torso" = "BT",
         "Front Torso" = "FT",
         "\\bLeg\\b" = "Legs",
@@ -125,6 +126,8 @@ clean_situation <- function(x) {
   case_when(
     x == "FEF" ~ "REF",
     x == "HK" ~ "GK",
+    x == "PK" ~ "PEN",
+    x == "Ref" ~ "REF",
     TRUE ~ x
   )
 }
@@ -259,7 +262,7 @@ Touches_invalid_labeled <- map(Touches_invalid_by_rater, function(df) { #apply g
 
 Touches_invalid_rater1 <- Touches_invalid_labeled[["Rater1"]]
 Touches_invalid_rater2 <- Touches_invalid_labeled[["Rater2"]]
-#Touches_invalid_rater3 <- Touches_invalid_labeled[["Rater3"]]
+Touches_invalid_rater3 <- Touches_invalid_labeled[["Rater3"]]
 
 ############################ Final Data Frame Creation | Separation of Inter-rater Game Data ############################ 
 
@@ -322,4 +325,5 @@ Touches_interrater <- Touches %>%
 
 Matches_interrater <- Matches %>%
   inner_join(interrater_assignments, by = "SeasonMatchNumber")
+
 
