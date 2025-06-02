@@ -30,6 +30,7 @@ Matches_ID <- Matches_final %>%
   mutate(
     MatchID = str_pad(MatchID, width = 4, pad = "0"),  # in case it was shortened
     TeamID = str_sub(MatchID, 1, 2),
+    Substitutes = as.character(Substitutes),
     Substitutes = str_replace_all(Substitutes, "\\.", ",")
   )
 
@@ -96,12 +97,13 @@ flagged_starter_matches <- Matches_ID %>%
 subs_exploded <- Matches_ID %>%
   select(SeasonMatchNumber, FirstHalfLength, SecondHalfLength, TeamID, Substitutes) %>%
   filter(!is.na(Substitutes) & Substitutes != "") %>%
+  mutate(Substitutes = as.character(Substitutes)) %>% 
   mutate(
     Substitutes = str_split(Substitutes, ",\\s*")) %>%
   unnest(Substitutes)
 
 #Parse the substitution strings into their parts
-subs_parsed <- subs_exploded %>%
+subs_parsed_noRedCards <- subs_exploded %>%
   filter(str_detect(Substitutes, "^\\d{8}$")) %>%  # Keep only well-formed subs
   mutate(
     SubIn   = str_sub(Substitutes, 1, 2),
@@ -111,16 +113,29 @@ subs_parsed <- subs_exploded %>%
   ) %>%
   select(SeasonMatchNumber, FirstHalfLength, SecondHalfLength, TeamID, Substitutes, SubIn, SubOut, Half, Minute)
 
+# Parse red card "subs"
+red_cards_parsed <- subs_exploded %>%
+  filter(str_detect(Substitutes, "^FR\\d{6}$")) %>%
+  mutate(
+    SubIn   = NA_character_,  # no one comes in because of Red Card
+    SubOut  = str_sub(Substitutes, 3, 4),  # player sent off
+    Half    = str_sub(Substitutes, 5, 5),
+    Minute  = as.numeric(str_sub(Substitutes, 6, 8))
+  ) %>%
+  select(SeasonMatchNumber, FirstHalfLength, SecondHalfLength, TeamID, Substitutes, SubIn, SubOut, Half, Minute)
+
+subs_parsed <- bind_rows(subs_parsed_noRedCards, red_cards_parsed) #combines together acceptable values
+
 #Sub issues to flag
 sub_issues <- Matches_ID %>%
   mutate(SeasonMatchNumber = as.character(SeasonMatchNumber)) %>%
   separate_rows(Substitutes, sep = ",\\s*") %>%
   filter(Substitutes != "") %>%
-  mutate(Flag = !str_detect(Substitutes, "^\\d{8}$")) %>%  # Expect 8 digits exactly
+  mutate(Flag = !str_detect(Substitutes, "^\\d{8}$") & !str_detect(Substitutes, "^FR\\d{6}$")) %>% #selects subs with 8 digits and those with improper FR setup
   filter(Flag) %>%
   select(SeasonMatchNumber, Substitutes)
 
-# Now filter out bad sub entries (those not 8 digits)
+# Now filter out bad sub entries (those not 8 digits or not FR + 6 digits)
 subs_parsed_clean <- subs_parsed %>%
   anti_join(sub_issues, by = c("SeasonMatchNumber", "Substitutes"))
 
@@ -167,8 +182,8 @@ subins_long <- subs_parsed_clean %>%
 
 # Combine both into one dataframe, keep distinct values
 match_player_entries <- bind_rows(starter_players_long, subins_long) %>%
-  mutate(Player = str_trim(Player)) %>%   # Clean whitespace just in case
-  distinct()
+  mutate(Player = str_trim(as.character(Player))) %>%
+  distinct(SeasonMatchNumber, TeamID, Player, .keep_all = TRUE)
 
 #pure iteration row by row (inefficient) to see fi player was subbed in/out
 match_player_entries <- match_player_entries %>% 
@@ -202,6 +217,12 @@ Matches_ID_unique <- Matches_ID %>%
   select(SeasonMatchNumber, TeamID, FirstHalfLength, SecondHalfLength) %>%
   distinct()
 
+Matches_ID_unique %>%
+  count(SeasonMatchNumber, TeamID) %>%
+  filter(n > 1)  # should not happen
+
+Matches_ID_unique <- Matches_ID_unique %>% distinct(SeasonMatchNumber, TeamID, .keep_all = TRUE)
+
 # Now join safely by both SeasonMatchNumber and TeamID
 match_player_entries <- match_player_entries %>%
   mutate(SeasonMatchNumber = as.character(SeasonMatchNumber)) %>%
@@ -209,17 +230,33 @@ match_player_entries <- match_player_entries %>%
 
 # First, extract only relevant sub-in/out info
 sub_in_info <- subs_parsed_clean %>%
+  filter(!is.na(SubIn)) %>%  # red cards won't have SubIn
   select(SeasonMatchNumber, TeamID, Player = SubIn, SubbedInHalf = Half, SubbedInMinute = Minute)
   
 sub_out_info <- subs_parsed_clean %>%
   select(SeasonMatchNumber, TeamID, Player = SubOut, SubbedOutHalf = Half, SubbedOutMinute = Minute)
   
+sub_in_info %>%
+  count(SeasonMatchNumber, TeamID, Player) %>%
+  filter(n > 1)  # should all be 1
+
+sub_out_info %>%
+  count(SeasonMatchNumber, TeamID, Player) %>%
+  filter(n > 1)  # same
+
 # Now, join it to match_player_metrics for only those who were subbed in/out
 match_player_entries <- match_player_entries %>%
   left_join(sub_in_info, by = c("SeasonMatchNumber", "TeamID", "Player"))
 
 match_player_entries <- match_player_entries %>%
   left_join(sub_out_info, by = c("SeasonMatchNumber", "TeamID", "Player"))
+
+match_player_entries <- match_player_entries %>%
+  mutate(
+    Player = str_trim(as.character(Player)),
+    TeamID = str_trim(as.character(TeamID)),
+    SeasonMatchNumber = str_trim(as.character(SeasonMatchNumber))
+  )
 
 #create a function to turn everything into seconds
 convert_mmss_to_seconds <- function(mmss) {
@@ -277,7 +314,25 @@ match_player_entries <- match_player_entries %>%
         if_else(SubbedInMinute == 46, SecondHalfSeconds, 
                 (SecondHalfSeconds - ((SubbedInMinute - 45)*60))),
       
-      TRUE ~ NA_real_  # For now, mark all other cases (e.g. subbed in) as NA
+      # Subbed in AND subbed out
+      WasPlayerSubbedIn == "Y" & WasPlayerSubbedOut == "Y" ~
+        case_when(
+          SubbedInMinute == 46 ~ (SubbedOutMinute - 45) * 60,
+          
+          SubbedInHalf == "1" & SubbedOutHalf == "1" ~ 
+            (SubbedOutMinute - SubbedInMinute) * 60,
+          
+          SubbedInHalf == "1" & SubbedOutHalf == "2" ~ 
+            (FirstHalfSeconds - SubbedInMinute * 60) + (SubbedOutMinute - 45) * 60,
+          
+          SubbedInHalf == "2" & SubbedOutHalf == "2" ~ 
+            (SubbedOutMinute - SubbedInMinute) * 60,
+          
+          TRUE ~ NA_real_
+        ),
+      
+      # Fallback
+      TRUE ~ NA_real_
     )
   )
 
@@ -306,5 +361,12 @@ duplicates <- match_player_entries %>%
   filter(n() > 1) %>%
   arrange(SeasonMatchNumber, TeamID, Player)
 
+
+checker <- match_player_entries %>%
+  count(SeasonMatchNumber, TeamID, Player) %>%
+  filter(n > 1) %>%
+  arrange(desc(n))
+
+View(checker)
 
 
