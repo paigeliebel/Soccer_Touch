@@ -70,9 +70,22 @@ TeamMatchCounts <- TeamMatchCounts %>%
 
 Filtered_Touch_Summary <- Touches_CoreHyp
 
+Filtered_Touch_Instance_count <- nrow(Filtered_Touch_Summary)
+
 #Count of frequency of touches per team
 Filtered_Touches_by_team <- Touches_by_team
 
 Filtered_TeamMatchCounts <- TeamMatchCounts %>%
   left_join(Filtered_Touches_by_team, 
             by = c("TeamID" = "Team"))
+
+Summary_Table <- tibble(
+  Variable = c("Total_Touch_Instance_count", "Filtered_Touch_Instance_count", "Total_Match_Count", "Total_Teams", "Total_Matches_perTeam"),
+  Value = c(
+    Total_Touch_Instance_count,
+    Filtered_Touch_Instance_count,
+    Total_Match_Count,
+    Total_Teams,
+    Total_Matches_perTeam
+  )
+)
