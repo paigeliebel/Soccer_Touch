@@ -2117,7 +2117,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 10208099,027,209344,02,"""08, ??""",AH,Tap,N,??,H,08,FT,GF,1,FBP,G,
 10208100,027,209346,02,"""10, 08""",AH,Hug,N,10,FT,08,FT,GF,3,DP,G,10 lays on top of 08 after her supposed goal
 10208101,027,209347,02,"""22, 10""",AH,Tap,N,22,H,10,BT,GF,1,BBP,G,
-10208102,027,209348,02,"""22, 08""",AH,Tap,N,22,H,08,FBP,GF,B,FBP,G,
+10208102,027,209348,02,"""22, 08""",AH,Tap,N,22,H,08,FT,GF,B,FBP,G,
 10208103,027,209349,02,"""10, 12""",AH,Tap,N,12,H,10,Head,GF,B,HT,G,
 10208104,027,209349,02,"""22, 08""",AH,Grab,Y,22,H,08,H,GF,5,HUP,G,
 10208105,027,209349,02,"""08, 12""",AH,Tap,N,12,H,08,BT,GF,1,BBP,G,

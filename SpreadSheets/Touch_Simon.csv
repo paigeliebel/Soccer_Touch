@@ -70,8 +70,8 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 20401068,087,208612,01,"""27, 03""",DH,Tap,Y,27,H,03,H,DA,B,LF1,G,
 20401069,087,208614,01,"""27, 06""",DH,Tap,N,06,H,27,BT,DA,B,BBP,G,
 20401070,087,208702,04,"""13, 07""",DH,Bump,N,13,FT,07,FT,Other,B,CO,G,
-20401071,087,208802,04,"""04, 01""",DH,Tap,N,04,H,01,BT,GS,B,BBP,G,
-20401072,087,208803,04,"""30, 01""",DH,Tap,N,30,H,01,BT,GS,B,BBP,G,
+20401071,087,208802,04,"""04, 01""",DH,Tap,N,04,H,01,BT,KS,B,BBP,G,
+20401072,087,208803,04,"""30, 01""",DH,Tap,N,30,H,01,BT,KS,B,BBP,G,
 20401073,087,208803,01,"""28, 24""",AH,Hug,N,28,Arm,24,BT,CK,1,SHUG,G,
 20401074,087,208757,04,"""13, 31""",DH,Push,N,13,Arm,31,BT,CK,B,TA,G,
 20401075,087,209320,04,"""10, 17""",DH,Tap,Y,10,H,17,H,SUB,B,HF2,G,
@@ -1575,7 +1575,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 21105033,159,208024,11,"""09, 07""",DH,Tap,N,07,H,09,Arm,WALL,B,TA,G,
 21105034,159,208025,11,"""09, 07""",DH,Tap,Y,07,Arm,09,Arm,WALL,B,Other,G,
 21105035,159,208403,05,"""06, 15""",AH,Grab,Y,15,H,06,H,SA,B,HS,G,
-21105036,159,208508,11,"""13, 09, ??""",DH,Tap,G,G,Arm,G,Arm,WALL,13,F,P,
+21105036,159,208508,11,"""13, 09, ??""",DH,Tap,G,G,Arm,G,Arm,WALL,13,Other,P,Arms touch in wall
 21105037,159,208525,05,"""06, 16, 08, 27, 10, 14, ??, 07, 05""",AH,Hug,G,G,Arm,G,BT,GF,6,GHUG,G,
 21105038,159,208524,05,"""06, 16""",AH,Tap,Y,16,H,06,H,GF,B,HF2,G,
 21105039,159,209032,05,"""08, 16""",DH,Tap,Y,16,H,08,FT,CK,B,FBP,G,
@@ -1667,7 +1667,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 10901010,007,102601,01,"""19, 11""",DH,Grab,Y,11,H,19,"""Legs, Arm""",IT,1,Other,G,11 lies on the floor and grabs 19 leg
 10901011,007,102604,01,"""19, 11""",DH,Grab,Y,19,H,11,H,IT,3,HS,G,
 10901012,007,102610,01,"""11, ??""",DH,Tap,N,??,H,11,BT,IT,1,BBP,G,
-10901013,007,103113,01,"""16, 19""",DH,"""Tap, Rub""",N,19,H,16,BT,IT,4,"""BBP, Other""",G,
+10901013,007,103113,01,"""16, 19""",DH,Rub,N,19,H,16,BT,IT,4,Other,G,Rubs back torso
 10901014,007,103114,01,"""11, 16""",DH,Tap,N,11,H,16,BT,IT,1,BBP,G,
 10901015,007,103120,01,"""11, 16""",DH,Tap,N,11,H,16,BT,IT,6,BBP,G,
 10901016,007,103410,01,"""16, 05""",DH,Hug,Y,16,Arm,05,BT,IT,13,SHUG,G,
@@ -2572,7 +2572,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 10907051,042,204859,09,"""11, 20""",AH,Tap,N,20,H,11,BT,IT,B,BBP,G,
 10907052,042,205707,09,"""03, 11""",AH,Tap,N,03,H,11,BT,OFF,B,BBP,G,
 10907053,042,205733,07,"""94, 05""",AH,Tap,Y,05,H,94,H,SUB,B,HF2,G,
-10907054,042,205733,07,"""94, 05""",AH,Hug,Y,05,F,94,FT,SUB,B,HUG,G,
+10907054,042,205733,07,"""94, 05""",AH,Hug,Y,05,FT,94,FT,SUB,B,HUG,G,
 10907055,042,205744,07,"""23, 14""",AH,Tap,Y,23,H,14,H,SUB,B,HF2,G,
 10907056,042,205745,07,"""23, 14""",AH,Tap,Y,23,H,14,H,SUB,B,BBP,G,
 10907057,042,205813,07,"""10, 06""",DH,Tap,N,19,H,06,BT,IT,1,BBP,G,
@@ -2896,7 +2896,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 20413059,122,104810,13,"""18, 01""",DH,Tap,N,18,H,01,BT,IT,2,BBP,G,
 20413060,122,104815,13,"""24, 29""",DH,Grab,N,24,H,29,Arm,HB,B,Other,G,Grabs arm
 20413061,122,104818,13,"""18, 01""",DH,Tap,N,18,H,01,BT,IT,1,BBP,G,
-20413062,122,104818,13,"""01, ??""",DH,"""Tap, Rub""",N,??,H,01,BT,IT,2,"""BBP, Other""",G,
+20413062,122,104818,13,"""01, ??""",DH,Rub,N,??,H,01,BT,IT,2,Rub,G,Rubs BT
 20413063,122,104819,13,"""01, ??""",DH,Tap,N,??,H,01,BT,IT,B,BBP,G,
 20413064,122,104823,13,"""26, 16""",DH,Tap,N,26,H,16,BT,HB,1,BBP,G,
 20413065,122,104857,04,"""13, 11""",AH,Tap,N,13,H,11,BT,FY,3,BBP,G,
@@ -2984,7 +2984,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 11409003,035,100316,14,"""17, 11""",AH,Tap,Y,11,H,17,H,F,B,LF1,G,
 11409004,035,100317,14,"""12, 26""",AH,Tap,N,12,H,26,Gluteal Region,F,B,BS,G,
 11409005,035,100318,09,"""??, ??""",DH,Tap,N,??,H,??,BT,F,B,TA,G,
-11409006,035,100314,09,"""15, ??""",DH,Tap,N,15,A,??,Arm,WALL,B,Other,P,Arms touch in wall
+11409006,035,100314,09,"""15, ??""",DH,Tap,N,15,Arm,??,Arm,WALL,B,Other,P,Arms touch in wall
 11409007,035,100330,14,"""12, 02""",AH,Tap,N,12,H,02,BT,F,B,BBP,G,
 11409008,035,100815,14,"""11, 02""",AH,Tap,N,02,H,11,"""FT, BT""",SA,B,"""FBP, BBP""",G,
 11409009,035,101326,09,"""02, 25""",DH,Tap,N,02,H,25,BT,Other,B,BBP,G,gets back to her position and taps her back on the way
@@ -3438,7 +3438,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 10108095,127,206115,08,"""13, 11""",DH,Tap,N,13,H,11,Legs,IT,1,Other,G,Taps her knee
 10108096,127,206119,08,"""13, 11""",DH,Tap,Y,13,H,11,H,IT,2,HUP,G,
 10108097,127,206121,08,"""13, 11""",DH,Tap,N,13,H,11,BT,IT,B,BBP,G,
-10108098,127,206512,08,"""25, 21""",DH,Tap,H,25,H,21,BT,CK,B,BBP,G,
+10108098,127,206512,08,"""25, 21""",DH,Tap,Y,25,H,21,BT,CK,B,BBP,G,
 10108099,127,206513,08,"""13, 01""",DH,Tap,Y,13,H,01,H,KS,B,LF1,G,
 10108100,127,206513,08,"""13, 01""",DH,Tap,N,13,H,01,Gluteal Region,KS,B,BS,G,
 10108101,127,206605,08,"""09, 21""",DH,Tap,Y,09,H,21,H,DA,B,LF1,G,
@@ -5054,12 +5054,13 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 20609093,174,208036,09,"""28, 31""",AH,Tap,N,31,H,28,BT,F,B,BBP,G,
 20609094,174,208053,06,"""21, 02""",DH,Tap,Y,02,H,21,H,DA,B,LF1,G,
 20609095,174,208205,06,"""07, 14""",DH,Tap,N,07,H,14,Legs,IT,B,Other,G,Taps knee
-20609096,174,208206,06,"""13, 14""",DH,"""Tap, Rub""",N,13,H,14,Legs,IT,2,Other,G,Taps/ rubs knee
-20609097,174,208413,09,"""??, ??""",AH,Tap,N,??,H,??,BT,HB,B,BBP,G,
-20609098,174,208415,09,"""15, ??""",AH,Tap,N,??,H,15,BT,HB,B,BBP,G,
-20609099,174,209223,06,"""30, 21""",DH,Bump,N,30,Legs,21,BT,KS,B,CO,G,
-20609100,174,209230,06,"""30, 27""",DH,Tap,N,27,H,30,BT,IT,3,BBP,G,
-20609101,174,209222,09,"""28, 11""",AH,Push,N,28,H,11,BT,F,B,TA,G,
+20609096,174,208206,06,"""13, 14""",DH,Rub,N,13,H,14,Legs,IT,2,Other,G, rubs knee
+20609097,174,208208,06,"""13, 14""",DH,Tap,N,13,H,14,Legs,IT,B,Other,G,Taps knee
+20609098,174,208413,09,"""??, ??""",AH,Tap,N,??,H,??,BT,HB,B,BBP,G,
+20609099,174,208415,09,"""15, ??""",AH,Tap,N,??,H,15,BT,HB,B,BBP,G,
+20609100,174,209223,06,"""30, 21""",DH,Bump,N,30,Legs,21,BT,KS,B,CO,G,
+20609101,174,209230,06,"""30, 27""",DH,Tap,N,27,H,30,BT,IT,3,BBP,G,
+20609102,174,209222,09,"""28, 11""",AH,Push,N,28,H,11,BT,F,B,TA,G,
 21403001,173,100048,03,"""32, 04""",DH,Tap,N,32,H,04,BT,Other,B,TA,P,Both mark opponents in the box
 21403002,173,100854,14,"""17, 24""",DH,Push,N,24,H,17,BT,Other,B,TA,G,Open play
 21403003,173,101040,03,"""20, ??""",DH,Tap,N,??,H,20,BT,CK,B,BBP,G,
