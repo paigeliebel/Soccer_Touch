@@ -175,15 +175,31 @@ kable(touch_agreement_summary)
 
 
 # Create pie chart
-ggplot(touch_agreement_summary, aes(x = "", y = Count, fill = factor(NumRaters))) +
-  geom_bar(width = 1, stat = "identity") +
+touch_agreement_summary <- touch_agreement_summary %>%
+  mutate(AgreementLabel = case_when(
+    NumRaters == 1 ~ "Touch event seen by only 1 Rater",
+    NumRaters == 2 ~ "Touch event seen by 2 Raters",
+    NumRaters == 3 ~ "Touch event seen by all 3 Raters"
+  ))
+
+# Define custom colors
+custom_colors <- c(
+  "Touch event seen by 1 Rater" = "#F4A6A6",  
+  "Touch event seen by 2 Raters" = "#A6C8F4", 
+  "Touch event seen by 3 Raters" = "#A6F4A6"   
+)
+
+# Plot
+ggplot(touch_agreement_summary, aes(x = "", y = Count, fill = AgreementLabel)) +
+  geom_bar(width = 1, stat = "identity", color = "white") +
   coord_polar("y") +
+  scale_fill_manual(values = custom_colors) +
   labs(title = "Touch Agreement by Number of Raters",
-       fill = "Raters in Agreement") +
+       fill = "Rater Agreement") +
   theme_void() +
   geom_text(aes(label = paste0(Percent, "%")),
             position = position_stack(vjust = 0.5),
-            color = "white", size = 5)
+            color = "black", size = 4.5)
 
 ############################ Deeper Dive ############################
 
