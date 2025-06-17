@@ -209,7 +209,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 11412015,085,101919,12,"""11, 13""",AH,Hug,Y,11,FT,13,FT,GF,1,HUG,G,
 11412016,085,101920,12,"""12, 11, 10, 77, 06, 12, 21""",AH,Hug,G,G,Arm,G,BT,GF,6,GHUG,G,
 11412017,085,101923,12,"""13, 21""",AH,Hug,Y,12,FT,21,FT,GF,B,HUG,G,
-11412018,085,101932,12,"""bp, 11""",AH,Tap,N,bp,H,11,BT,GF,B,BBP,G,
+11412018,085,101932,12,"""??, 11""",AH,Tap,N,??,H,11,BT,GF,B,BBP,G,
 11412019,085,102043,14,"""07, 11""",AH,Grab,Y,07,H,11,H,FY,1,HUP,G,
 11412020,085,102116,12,"""06, 11, 77, 10""",DH,Hug,G,G,Arm,G,Arm,WALL,2,Other,G,Wall of interlocking arms
 11412021,085,102851,14,"""05, 26""",DH,Push,N,05,H,26,BT,F,1,TA,G,
@@ -1028,7 +1028,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 10910011,070,103038,09,"""01, 22""",DH,Bump,Y,01,H,22,H,HB,B,FB,G,
 10910012,070,103039,09,"""01, 22""",DH,Tap,N,01,H,22,BT,HB,1,BBP,G,
 10910013,070,103104,09,"""SU, 22""",DH,Tap,N,SU,H,22,Arm,HB,2,FBP,G,
-10910014,070,103945,09,"""09, 10, 22""",AH,Hug,G,G,Arm,F,BT,GF,2,GHUG,G,
+10910014,070,103945,09,"""09, 10, 22""",AH,Hug,G,G,Arm,G,BT,GF,2,GHUG,G,
 10910015,070,103945,09,"""20, 02""",AH,Tap,Y,20,H,02,H,GF,B,LF2,G,
 10910016,070,103946,09,"""20, 02""",AH,Hug,Y,20,Arm,02,BT,GF,1,SHUG,G,
 10910017,070,103947,09,"""22, 20""",AH,Tap,N,20,H,22,BT,GF,B,BBP,G,
@@ -1605,7 +1605,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 20914018,161,103301,14,"""01, 05""",DH,Tap,N,01,H,05,BT,KS,B,BBP,G,
 20914019,161,103845,09,"""22, ??""",AH,Tap,Y,22,H,??,H,FY,B,HF1,G,
 20914020,161,103913,14,"""01, 22""",DH,Tap,N,01,H,22,FT,FY,1,FBP,G,
-20914021,161,103938,14,"""33, 12, 26""",DH,Grab,G,G,H,H,Arm,WALL,3,TA,G,
+20914021,161,103938,14,"""33, 12, 26""",DH,Grab,G,G,H,G,Arm,WALL,3,TA,G,
 20914022,161,205334,09,"""22, 19""",AH,Squeeze,N,19,H,22,Legs,PEN,3,Other,G,Injury touch after a PEN call
 20914023,161,205342,09,"""19, 22""",AH,Tap,N,18,H,22,BT,PEN,B,Other,G,Injury touch after a PEN call
 20914024,161,205447,14,"""24, ??""",DH,Tap,N,??,H,24,BT,PEN,B,BBP,G,
@@ -2467,7 +2467,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 11012024,106,205217,10,"""09, 21""",AH,Tap,Y,09,H,21,H,SA,B,LF1,G,
 11012025,106,205544,12,"""11, 21""",DH,Tap,Y,21,H,11,H,SUB,B,LF2,G,
 11012026,106,205545,12,"""11, 18""",DH,Tap,Y,11,H,18,H,SUB,B,LF1,G,
-11012027,106,205545,12,"""11, 18""",DH,Tap,N,18,H,BT,H,SUB,B,BBP,G,
+11012027,106,205545,12,"""11, 18""",DH,Tap,N,18,H,11,BT,SUB,B,BBP,G,
 11012028,106,205856,12,"""01, 02""",DH,Tap,N,01,H,02,BT,CK,B,BBP,G,
 11012029,106,206523,10,"""08, 09""",DH,Tap,N,08,H,09,BT,IT,1,BBP,G,
 11012030,106,206531,10,"""17, 09""",DH,Tap,N,17,H,09,BT,IT,6,BBP,G,
@@ -5176,7 +5176,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 10204092,019,208514,02,"""12, 22""",DH,Tap,N,12,H,22,BT,PEN,B,BBP,G,
 10204093,019,208514,02,"""19, 02""",DH,Tap,N,19,H,01,BT,PEN,B,BBP,G,
 10204094,019,208521,02,"""12, 04""",DH,Tap,N,12,H,04,BT,PEN,B,BBP,G,
-10204095,019,208614,04,"""30, 09""",AH,Tap,N,30,H,BT,BT,GF,1,BBP,G,
+10204095,019,208614,04,"""30, 09""",AH,Tap,N,30,H,09,BT,GF,1,BBP,G,
 10204096,019,208616,04,"""17, 30, 14, 17, 07, 06, 19, ??""",AH,Hug,G,G,Arm,G,BT,GF,4,GHUG,G,
 10204097,019,208815,04,"""19, 15""",AH,Bump,N,15,Arm,19,BT,Other,B,CO,G,run of play going after a header
 10204098,019,209047,04,"""17, 01""",DH,Tap,N,17,H,01,BT,KS,1,BBP,G,
@@ -5566,7 +5566,7 @@ xyyzzaaa,xxx,hmmmss,teamID,"""pp, pp, pp...""",DH or AH,refer to list,Y or N or 
 10408038,144,205942,08,"""16, 24""",DH,Tap,N,16,H,24,BT,FY,B,BBP,P,
 10408039,144,206145,04,"""11, 30""",DH,Grab,N,30,H,11,Feet,IT,8,Other,G,Stretching out calf
 10408040,144,206604,04,"""01, 30""",DH,Tap,Y,01,H,30,H,DA,B,LF1,G,
-10408041,144,206605,04,"""01, 30""",DH,Tap,N,01,H,BT,H,DA,B,BBP,G,
+10408041,144,206605,04,"""01, 30""",DH,Tap,N,01,H,30,BT,DA,B,BBP,G,
 10408042,144,206615,08,"""16, 30""",AH,Tap,N,16,H,30,Gluteal Region,CK,B,BS,G,
 10408043,144,207058,08,"""16, 05""",DH,Bump,N,16,BT,05,BT,DA,B,CO,G,
 10408044,144,207558,04,"""30, 31""",DH,Grab,Y,30,H,31,H,FY,2,HUP,G,

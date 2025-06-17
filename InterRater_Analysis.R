@@ -206,3 +206,7 @@ ggplot(touch_agreement_summary, aes(x = "", y = Count, fill = AgreementLabel)) +
 #What percent of paired touches are similar?
 #As in, within a paired touch, do the raters have the same players, reciprocity, etc?
 
+#This would be for Tobi and Simon
+#I feel that what I have already done should be sufficient
+
+

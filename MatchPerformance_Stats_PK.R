@@ -367,6 +367,5 @@ checker <- match_player_entries %>%
   filter(n > 1) %>%
   arrange(desc(n))
 
-View(checker)
 
 
