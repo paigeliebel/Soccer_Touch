@@ -12,7 +12,6 @@ library (dplyr)
 
 source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
 
-#note that this is not complete until we get Simon Data (only 2/3s of it so far)
 #Ensure to use the correct dfs. Touches_final and Matches_final are correct. They only include assigned rater data, no repeat matches
 
 #Check to make sure data frames are loaded:

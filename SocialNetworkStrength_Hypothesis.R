@@ -109,18 +109,6 @@ reciprocal_lm <- lm(Rank ~ Reciprocal_To_NonRecip_Ratio, data = Reciprocal_vs_Ra
 
 #Everything below needs to get looked at again with the above concern addressed!
 
-
-
-
-
-
-
-
-
-
-
-
-
 #concentration of touch within players on a team could be a metric for overall team cohesion | ridge plot
 #include injured-touch because we are looking at how touchy some players are
 
