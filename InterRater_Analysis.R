@@ -21,7 +21,7 @@ source("Data_Management.R") #Runs and brings in Matches_final from Data_Manageme
 
 #Dataframe "Touches_interrater" contains all the touches recorded for this analysis
 
-#Should I exclude
+# Should I exclude
 # Situations excluded from core analysis for these hypotheses: Goals For/Against, Substitutions
 Exclude_Touch <- c("TA", "CO", "NEG")
 Exclude_Situation <- c("GF", "GA", "SUB")
@@ -95,111 +95,12 @@ print(icc_result)
 ############################ Pairing Touches Together ############################
 
 #event-level Interrater Reliability
+#Some touches are only seen by one rater
+#Some raters will have multiple touches at one time
 #Paired Touch = Same time +-2 seconds, Season Match Number, TeamID, Touch Action
+#If multiple fall into these buckets, then 'pair' at random. Such that if Rater 1 counts 4 with these criteria
+#and Rater 2 has 5 and Rater 3 has 6, then 4 would be paired across 3 raters (1 through 4), 1 across 2 raters (the 5th seen by both Rater 2 and 3), and 1 alone (the last one by Rater 3)
 
-# Limit to useful columns and clean first
-touches_eventbased <- Interrater %>%
-  select(TouchID, SeasonMatchNumber, Team, Time, TouchAction, Rater) %>%
-  filter(!is.na(Time))  # just in case
-
-touches_eventbased <- touches_eventbased %>%
-  mutate(Time = as.numeric(Time))  # makes Time numeric
-
-# Now do a fuzzy join within ±1 seconds, same match, same team, same action
-touch_pairs_eventbased <- fuzzy_inner_join(
-  touches_eventbased, touches_eventbased,
-  by = c(
-    "SeasonMatchNumber" = "SeasonMatchNumber",
-    "Team" = "Team",
-    "TouchAction" = "TouchAction",
-    "Time" = "Time"
-  ),
-  match_fun = list(`==`, `==`, `==`, function(x, y) abs(x - y) <= 2)
-)
-
-# Remove self-matches and ensure we’re only comparing between raters
-touch_pairs_filtered_eventbased <- touch_pairs_eventbased %>%
-  filter(Rater.x != Rater.y) %>%  # exclude same-rater comparisons
-  select(
-    SeasonMatchNumber.x,
-    Team.x,
-    Time.x, TouchID.x, Rater.x,
-    Time.y, TouchID.y, Rater.y,
-    TouchAction.x
-  )
-
-#Count total touches per rater
-rater_totals <- Interrater %>%
-  filter(Rater %in% c("Rater1", "Rater2", "Rater3")) %>%
-  group_by(Rater) %>%
-  summarise(TotalTouches = n(), .groups = "drop")
-
-#Count how many of each rater's touches were matched
-rater_matched <- touch_pairs_filtered_eventbased %>%
-  distinct(TouchID.x, Rater.x) %>%
-  group_by(Rater.x) %>%
-  summarise(MatchedTouches = n(), .groups = "drop") %>%
-  rename(Rater = Rater.x)
-
-#Joins total and matched counts to compute match rate
-#how many of those were seen (±2 sec, same team/action/match) by at least one other rater
-rater_agreement <- rater_totals %>%
-  left_join(rater_matched, by = "Rater") %>%
-  mutate(
-    MatchedTouches = replace_na(MatchedTouches, 0),
-    AgreementRate = MatchedTouches / TotalTouches #the "recall" for that rater, or how well their coded events were corroborated
-  )
-
-kable(rater_agreement, digits = 2)
-
-###See how many events were seen by 1, 2, or all 3 raters
-# Step 1: Generate unique identifier for matching groups
-touch_match_groups <- touch_pairs_filtered_eventbased %>%
-  mutate(EventGroupID = paste(SeasonMatchNumber.x, Team.x, TouchAction.x, Time.x, sep = "_")) %>%
-  select(EventGroupID, Rater.x, TouchID.x) %>%
-  rename(Rater = Rater.x, TouchID = TouchID.x) %>%
-  distinct()
-
-# Step 2: Count how many unique raters contributed to each matched event
-event_rater_counts <- touch_match_groups %>%
-  group_by(EventGroupID) %>%
-  summarise(NumRaters = n_distinct(Rater), .groups = "drop")
-
-# Step 3: Tabulate the number of events seen by 1, 2, or all 3 raters
-touch_agreement_summary <- event_rater_counts %>%
-  count(NumRaters, name = "Count") %>%
-  mutate(Percent = round(100 * Count / sum(Count), 1))
-
-# Show the result
-kable(touch_agreement_summary)
-
-
-# Create pie chart
-touch_agreement_summary <- touch_agreement_summary %>%
-  mutate(AgreementLabel = case_when(
-    NumRaters == 1 ~ "Touch event seen by only 1 Rater",
-    NumRaters == 2 ~ "Touch event seen by 2 Raters",
-    NumRaters == 3 ~ "Touch event seen by all 3 Raters"
-  ))
-
-# Define custom colors
-custom_colors <- c(
-  "Touch event seen by 1 Rater" = "#F4A6A6",  
-  "Touch event seen by 2 Raters" = "#A6C8F4", 
-  "Touch event seen by 3 Raters" = "#A6F4A6"   
-)
-
-# Plot
-ggplot(touch_agreement_summary, aes(x = "", y = Count, fill = AgreementLabel)) +
-  geom_bar(width = 1, stat = "identity", color = "white") +
-  coord_polar("y") +
-  scale_fill_manual(values = custom_colors) +
-  labs(title = "Touch Agreement by Number of Raters",
-       fill = "Rater Agreement") +
-  theme_void() +
-  geom_text(aes(label = paste0(Percent, "%")),
-            position = position_stack(vjust = 0.5),
-            color = "black", size = 4.5)
 
 ############################ Deeper Dive ############################
 

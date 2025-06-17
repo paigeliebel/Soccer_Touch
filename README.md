@@ -50,6 +50,8 @@ The Rscripts built out so far are listed and described below:
     WikiSource: http://en.wikipedia.org/wiki/2024_National_Women%27s_Soccer_League_season
 
   *FinalStandings* = dataframe that has final season stats pulled from NWSL website
+  
+  We should probably note at some point the the word "Touch". In soccer, a touch is in reference to when a player touches the ball. However, in this conext, we are referring to social interactions between players. 
 -------------------------------------------------------------------------------------------------------------
 
 # Core_Hypothesis.R

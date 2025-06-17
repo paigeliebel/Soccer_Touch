@@ -152,6 +152,10 @@ ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTouches)) +
   ) +
   theme_minimal()
 
+cor_result_var <- cor.test(Variability_vs_Rank$SDTouches, Variability_vs_Rank$Rank)
+
+print(cor_result_var)
+
 #Following looks at the number of subs each team has over the season and number of corners etc (looking at match data)
 # #Number of subs:
 # # Step 1: Create a working copy with TeamID and SubCount calculated
