@@ -468,3 +468,4 @@ ggplot(touch_concentration, aes(x = Rank, y = Top3_Proportion)) +
 cor.test(touch_concentration$Top3_Proportion, touch_concentration$Rank)
 
 summary(lm(Top3_Proportion ~ Rank, data = touch_concentration))
+
