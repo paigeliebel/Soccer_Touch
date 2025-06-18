@@ -1,0 +1,1032 @@
+---
+title: "Soccer Touch Study"
+subtitle: "Initial draft for Anne and Annett to Review"
+author: "Paige Liebel"
+output: html_document
+date: "2025-06-18"
+---
+## Introduction
+
+Hi team! This is my first true stab at the data. I addressed 4 different hypotheses, each with their own sections. The first hypothesis do not seem to have any 'positive' outcome however the last three show some promise. With full intention to bias you, the underdog hypothesis (number 3) is my favorite.
+
+I will step through each of the hypotheses in order, with their corresponding R-code and outputs.
+
+At the end, I have a quick mention to the Inter-Rater analysis.
+
+Here is also a link to the git-hub repository containing my code and the raw data spreadsheets if you would like to take a look. I may have to give you permission to access them, apologies for the extra step: [Click here for Git-hub code link] (https://github.com/paigeliebel/Soccer_Touch.git)
+
+For readability, the code required for cleaning, merging, and fixing typos in the data frames was hidden from this report. You can see the code in the github.
+
+```{r DataSetup, message=FALSE, warning=FALSE, include=FALSE}
+# Data_Management
+# For more information on these data frames please look at the README.md file
+
+library(tidyverse)
+library(data.table)
+library(broom)
+library(janitor)
+library(readxl)
+library(rmarkdown)
+library(readr)
+
+################################################################
+
+# raters and corresponding sheets
+# Rater1 = Paige, Rater2 = Tobi, Rater3 = Simon
+
+raters <- list(
+  Rater1 = list(touch = "Touch_Paige.csv", match = "Match_Paige.csv"),
+  Rater2 = list(touch = "Touch_Tobi.csv",  match = "Match_Tobi.csv"),
+  Rater3 = list(touch = "Touch_Simon.csv", match = "Match_Simon.csv")  
+)
+
+Touch_Dataframes_List <- map2(names(raters), raters, function(rater_name, files) {
+  read_csv(file.path("SpreadSheets", files$touch)) %>%
+    slice(-1) %>%  # remove instruction row
+    mutate(across(where(is.character), ~ str_replace_all(., '^"|"$', ""))) %>%
+    mutate(Rater = rater_name)
+})
+
+Touches <- bind_rows(Touch_Dataframes_List)
+
+Match_Dataframes_List <- map2(names(raters), raters, function(rater_name, files) {
+  read_csv(file.path("SpreadSheets", files$match)) %>%
+    slice(-1) %>%  # removes instruction row (row 2 from the sheet)
+    mutate(across(where(is.character), ~ str_replace_all(., '^"|"$', ""))) %>%
+    mutate(Rater = rater_name)
+})
+
+Matches <- bind_rows(Match_Dataframes_List)
+
+
+############################ Additional Data for Comparing ############################ 
+
+#Primary_SeasonOverview <- read_csv("SpreadSheets/Primary_SeasonOverview.csv")
+
+Team_IDs <- read_csv("SpreadSheets/TeamIDs.csv")
+
+#Stadiums <- read_csv("SpreadSheets/Stadiums.csv")
+
+#MatchAssignments_WatchOrder <- read_csv("SpreadSheets/MatchAssignments_WatchOrder.csv")
+
+StandingsByWeek <- read_csv("SpreadSheets/StandingsByWeek_Clean.csv")
+
+FinalStandings <- read_csv("SpreadSheets/FinalSeasonStandings.csv")
+
+############################ Defining Valid Entries ############################ 
+
+#Defining valid entries into columns based on project setup
+
+# Define valid values
+
+valid_touch_actions <- c(
+  "Tap", "Bump", "Push", "Squeeze", "Grab",
+  "Kiss", "Hug", "Rub", "Stroke"
+)
+
+valid_reciprocal <- c("N", "Y", "G")
+
+valid_body_parts <- c(
+  "H", "Arm", "FT", "Legs", "BT", "Gluteal Region", 
+  "Head", "Neck", "Feet"
+)
+
+valid_situations <- c(
+  "F", "FY", "FR", "KS", "SA", "PP", "SUB", "GF", "GA", "DA",
+  "CK", "TI", "REF", "IT", "HB", "OFF", "GK", "HUD", "WALL",
+  "PEN", "Other", "BRAWL"
+)
+
+valid_hapticrituals <- c(
+  "HF1", "HF2", "LF1", "LF2", "CO", "HS", "HT", "P", "CB",
+  "GHUG", "FB", "HR", "HH", "CR", "DP", "BS", "HUP", "CAP",
+  "SG", "NEG", "Other", "FBP", "BBP", "HUG", "CHUG", "TA", "SHUG"
+)
+
+############################ Cleaning Data | Obvious Human Error ############################ 
+
+#Cleaning Functions to fix user input error: Such as "Arn" to "Arm"
+
+clean_touch_action <- function(x) {
+  case_when(
+    x %in% c("GHUG", "HUG") ~ "Hug",
+    TRUE ~ x
+  )
+}
+
+clean_reciprocal <- function(x) {
+  case_when(
+    x == "B" ~ "N",
+    TRUE ~ x
+  )
+}
+
+clean_body_parts <- function(x) {
+  x %>%
+    as.character() %>%
+    str_remove_all('^\"|\"$') %>%           # remove any surrounding quotes
+    str_split(",\\s*") %>%
+    map_chr(~ paste(
+      str_trim(str_replace_all(.x, c(
+        "Arn" = "Arm",
+        "AH" = "Arm",
+        "Hand" = "H",
+        "Foot" = "Feet",
+        "Back Torso" = "BT",
+        "Front Torso" = "FT",
+        "\\bLeg\\b" = "Legs",
+        "Bt" = "BT",
+        "Ft" = "FT"
+      ))),
+      collapse = ", "
+    ))
+}
+
+clean_situation <- function(x) {
+  case_when(
+    x == "FEF" ~ "REF",
+    x == "HK" ~ "GK",
+    x == "PK" ~ "PEN",
+    x == "Ref" ~ "REF",
+    TRUE ~ x
+  )
+}
+
+clean_haptic_ritual <- function(x) {
+  x %>%
+    as.character() %>%
+    str_remove_all('^\"|\"$') %>%
+    str_split(",\\s*") %>%
+    map_chr(~ paste(
+      str_trim(str_replace_all(.x, c(
+        "LF!" = "LF1"
+      ))),
+      collapse = ", "
+    ))
+}
+
+clean_visibility <- function(x) {
+  case_when(
+    x %in% c("B", "H") ~ "G",
+    TRUE ~ x
+  )
+}
+
+
+#Now applying these functions to corresponding data frames and columns
+
+Touches <- Touches %>%
+  mutate(
+    TouchAction = clean_touch_action(TouchAction),
+    ToucherBodyPart = clean_body_parts(ToucherBodyPart),
+    ToucheeBodyPart = clean_body_parts(ToucheeBodyPart),
+    Situation = clean_situation(Situation),
+    HapticRitual = clean_haptic_ritual(HapticRitual),
+    Reciprocal = clean_reciprocal(Reciprocal),
+    Visibility = clean_visibility(Visibility)
+  )
+
+############################ Functions to check for invalid entries in data frame ############################ 
+
+#First fxns for checking columns that had lists (read in strangely so needed extra love)
+
+is_invalid_bodypart <- function(x) { #splits lists within cell to look at individual values (checks to make sure "FT, Arn" is flagged for "Arn")
+  x %>%
+    as.character() %>%                    # ensures all input is character
+    str_split(",\\s*") %>%
+    map_lgl(~ {
+      parts <- .x
+      if (any(is.na(parts)) || any(parts == "NA")) return(TRUE)  # flag both empty and NA values
+      any(!parts %in% valid_body_parts)     # TRUE only if any part is invalid
+    })
+}
+
+is_invalid_haptic_ritual <- function(x) { #splits lists within cell to look at individual values (flags things like "CR, BF" for "BF" which is not a valid haptic ritual)
+  x %>%
+    as.character() %>%
+    str_split(",\\s*") %>%
+    map_lgl(~ {
+      parts <- .x
+      if (any(is.na(parts)) || any(parts == "NA")) return(TRUE)
+      any(!parts %in% valid_hapticrituals)
+    })
+}
+
+#Function to let us know where the invalid feature occurs. Output is a new column that contains the column location of the error
+get_invalid_fields <- function(row) {
+  invalid_fields <- c()
+  
+  if (!(row$Reciprocal %in% valid_reciprocal)) {
+    invalid_fields <- c(invalid_fields, "Reciprocal")
+  }
+  
+  if (is_invalid_bodypart(row$ToucherBodyPart)) {
+    invalid_fields <- c(invalid_fields, "ToucherBodyPart")
+  }
+  
+  if (is_invalid_bodypart(row$ToucheeBodyPart)) {
+    invalid_fields <- c(invalid_fields, "ToucheeBodyPart")
+  }
+  
+  if (!(row$Situation %in% valid_situations)) {
+    invalid_fields <- c(invalid_fields, "Situation")
+  }
+  
+  if (is_invalid_haptic_ritual(row$HapticRitual)) {
+    invalid_fields <- c(invalid_fields, "HapticRitual")
+  }
+  
+  if (!(row$TouchAction %in% valid_touch_actions)) {
+    invalid_fields <- c(invalid_fields, "TouchAction")
+  }
+  
+  paste(invalid_fields, collapse = ", ")
+}
+############################ Trouble-Shooting | Human Input Error ############################ 
+
+#Troubleshooting: Looking at each column and checking values to look for human error while inputting data during collection
+
+cols <- c("Team", "TouchAction", "Reciprocal", "ToucherBodyPart", "ToucheeBodyPart", "Situation", "HapticRitual", "Visibility")
+
+#Starting with Touches
+
+unique_vals <- Touches %>%
+  select(all_of(cols)) %>% 
+  map(~ unique(.))
+
+max_len <- max(lengths(unique_vals))
+padded <- map(unique_vals, ~ { length(.) <- max_len; . })
+unique_values_df <- as.data.frame(padded)
+
+#determining which touchID and rater discrepancies are connected to
+#"Show me the mistakes, so I can fix them or track who made them":
+
+Touches_invalid <- Touches %>%
+  filter(
+    !(Reciprocal %in% valid_reciprocal) |
+      is_invalid_bodypart(ToucherBodyPart) |
+      is_invalid_bodypart(ToucheeBodyPart) |
+      !(Situation %in% valid_situations) |
+      is_invalid_haptic_ritual(HapticRitual) |
+      !(TouchAction %in% valid_touch_actions)
+  )
+
+Touches_invalid_by_rater <- split(Touches_invalid, Touches_invalid$Rater) #split by rater
+
+Touches_invalid_labeled <- map(Touches_invalid_by_rater, function(df) { #apply get_invalid_fields() to each row in each rater's dataframe
+  df %>%
+    rowwise() %>%
+    mutate(Invalid_Fields = get_invalid_fields(pick(everything()))) %>%
+    ungroup()
+})
+
+Touches_invalid_rater1 <- Touches_invalid_labeled[["Rater1"]]
+Touches_invalid_rater2 <- Touches_invalid_labeled[["Rater2"]]
+Touches_invalid_rater3 <- Touches_invalid_labeled[["Rater3"]]
+
+############################ Final Data Frame Creation | Separation of Inter-rater Game Data ############################ 
+
+#Creating the final data frames used for analysis
+#Removes the data from matches not assigned to that specific rater. For example, if Rater 1 was assigned match 126, 
+#then Rater 2 and 3 also watched it and have populated data for that match.
+#this section removes that data created from rater 2 and 3 keeping only rater 1s info.
+#Do this to both the Matches and Touches Dataframs (has to happen twice)
+
+#Define match assignments
+InterRaterMatches_Rater1 <- c("127", "115", "26", "87") #Paige
+InterRaterMatches_Rater2 <- c("114", "39", "163", "42") #Tobi
+InterRaterMatches_Rater3 <- c("95", "150", "38", "160") #Simon
+
+#Combine all 12 interrater matches with rater mapping
+interrater_assignments <- tibble(
+  SeasonMatchNumber = c(InterRaterMatches_Rater1, InterRaterMatches_Rater2, InterRaterMatches_Rater3),
+  AssignedRater = c(rep("Rater1", length(InterRaterMatches_Rater1)),
+                    rep("Rater2", length(InterRaterMatches_Rater2)),
+                    rep("Rater3", length(InterRaterMatches_Rater3)))
+)
+
+#SeasonMatchNumber imported differently, need to change to same character thingy
+interrater_assignments <- interrater_assignments %>%
+  mutate(SeasonMatchNumber = as.character(SeasonMatchNumber))
+
+Touches <- Touches %>%
+  mutate(SeasonMatchNumber = str_remove(as.character(SeasonMatchNumber), "^0+")) #removes leading zeros
+
+Matches <- Matches %>%
+  mutate(SeasonMatchNumber = str_remove(as.character(SeasonMatchNumber), "^0+")) #removes leading zeros
+
+#make new data frame from Touches, if row contains InterRaterMatches_Rater1 and the word rater 1, keep it, otherwise delete row
+
+Touches_final <- Touches %>% #This df has all matches, but excludes the repeated matches watched for inter-rater study except by the rater they were originally assigned for
+  anti_join(interrater_assignments, by = c("SeasonMatchNumber" = "SeasonMatchNumber")) %>%
+  bind_rows(
+    Touches %>%
+      inner_join(interrater_assignments, by = c("SeasonMatchNumber")) %>%
+      filter(Rater == AssignedRater)
+  )
+
+#Same as above but for matches now (performance data for each match)
+Matches_final <- Matches %>%
+  anti_join(interrater_assignments, by = c("SeasonMatchNumber" = "SeasonMatchNumber")) %>%
+  bind_rows(
+    Matches %>%
+      inner_join(interrater_assignments, by = c("SeasonMatchNumber")) %>%
+      filter(Rater == AssignedRater)
+  )
+
+
+############################ Inter-rater Game Data ############################ 
+
+#Creation of data frames for Inter-rater data analysis
+#Simply looks at all matches that were watched by multiple people
+
+Touches_interrater <- Touches %>%
+  inner_join(interrater_assignments, by = "SeasonMatchNumber")
+
+Matches_interrater <- Matches %>%
+  inner_join(interrater_assignments, by = "SeasonMatchNumber")
+
+
+
+```
+
+## **Hypothesis 1: Touch as a Metric for End of Season Success**
+
+**Core Hypothesis**: *Pro-social touches between teammates may serve as an indicator for overall team cohesion. Therefore, we propose that teams with a greater frequency of these interactions will secure higher positions in the season’s final standings.*
+
+**Sub-Hypothesis 1**: *Teams that show less variability across matches throughout a season with regards to their touch will secure higher positions in the season's final standings.*
+
+For the Sub-Hypothesis the touches were scaled for each team based on distance from mean (MAD-based z-score). Some teams are 'touchier' than others.
+
+Definitions:
+
+Pro-social touches are defined as all haptic rituals recorded excluding: Tactical Adjustments, Collisions, and Negative Touch
+
+Situations excluded from analysis for this hypothesis: Goals For/Against, Substitutions
+
+```{r pressure, echo=TRUE, message=FALSE, warning=FALSE, paged.print=TRUE}
+library(tidyverse)
+library(data.table)
+library(broom)
+library(janitor)
+library(readxl)
+library(rmarkdown)
+library(readr)
+library (dplyr)
+
+Exclude_Touch <- c("TA", "CO", "NEG")
+Exclude_Situation <- c("GF", "GA", "SUB") 
+#Exclude_Visibility <- c("P")
+
+#Creates data set for core hypothesis analysis
+Touches_CoreHyp <- Touches_final %>%
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation)) #%>% 
+  #filter(!(Visibility %in% Exclude_Visibility))
+
+#Count of frequency of touches per team
+Touches_by_team <- Touches_CoreHyp %>%
+  mutate(Team = str_trim(as.character(Team))) %>%
+  count(Team, name = "TotalTouches")
+
+# Make sure TeamID is padded to match
+FinalStandings <- FinalStandings %>%
+  mutate(TeamID = str_pad(as.character(TeamID), width = 2, pad = "0"))
+
+#Join touch counts with final standings
+Team_Touches_Standings <- FinalStandings %>%
+  left_join(Touches_by_team, by = c("TeamID" = "Team")) %>%
+  filter(!is.na(TotalTouches))
+
+#Plot with regression line : final rankings to frequency of touch
+TouchFreq_vs_FinalStandings <- ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1) +
+  scale_x_reverse() +
+  labs(
+    title = "Final Rank vs Overall Touch Frequency",
+    x = "Final Season Rank",
+    y = "Total Touches (Filtered)"
+  ) +
+  theme_minimal()
+
+TouchFreq_vs_FinalStandings_Stats <- cor_result <- cor.test(Team_Touches_Standings$TotalTouches, Team_Touches_Standings$Rank)
+```
+
+# Results for Hypothesis 1:
+```{r Hyp 1 Output, echo=FALSE, message=FALSE, warning=FALSE}
+TouchFreq_vs_FinalStandings
+
+TouchFreq_vs_FinalStandings_Stats
+```
+
+# Sub-Hypothesis 1
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+########## Within-Team Variability in Touch Frequency ########## 
+
+# Looks at the variability a team has across matches throughout the season
+
+# Count touches per team per game from CoreHyp data frame
+Touches_per_game <- Touches_CoreHyp %>%
+  group_by(Team, SeasonMatchNumber) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
+# Computing Within-Team Variability
+Team_touch_variability <- Touches_per_game %>%
+  group_by(Team) %>%
+  summarise(
+    MeanTouches = mean(TouchCount),
+    SDTouches = sd(TouchCount),
+    MinTouches = min(TouchCount),
+    MaxTouches = max(TouchCount),
+    NumGames = n(),
+    .groups = "drop"
+  )
+
+# Join season rank to each team for ordering in the plot
+Touches_per_game_ranked <- Touches_per_game %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  filter(!is.na(Rank))  # make sure we only include ranked teams
+
+# Visualize 
+TouchesPerGame_vs_rank <- ggplot(Touches_per_game_ranked, aes(x = Rank, y = TouchCount, group = Rank)) +
+  geom_boxplot(fill = "lightblue", color = "black") +
+  scale_x_reverse(breaks = 1:14) +  # clean 1–14 axis
+  labs(
+    title = "Variation of Within-Team Touch Frequency per Game",
+    x = "Team (Ordered by Final Rank)",
+    y = "Touches per Game"
+  ) +
+  theme_minimal()
+
+# Scale touch based on distance from mean (MAD-based z-score)
+# How extreme a touch count is compared to team's norm
+Touches_scaled <- Touches_per_game %>%
+  group_by(Team) %>%
+  mutate(
+    MedianTouch = median(TouchCount),
+    MAD = mad(TouchCount),  # median absolute deviation
+    ScaledTouch = (TouchCount - MedianTouch) / MAD
+  ) %>%
+  ungroup()
+
+# Join Touches_scaled with ranks
+Touches_scaled_ranked <- Touches_scaled %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  filter(!is.na(Rank))
+
+# Plot of MAD
+MAD_TouchesPerGame_vs_rank <- ggplot(Touches_scaled_ranked, aes(x = Rank, y = ScaledTouch, group = Rank)) +
+  geom_boxplot(fill = "lightblue", color = "black") +
+  geom_hline(yintercept = c(-2, 2), linetype = "dashed", color = "red") +
+  scale_x_reverse(breaks = 1:14) +  # clean 1–14 axis
+  labs(
+    title = "Scaled Touch Deviation from Team Median",
+    subtitle = "Boxplot of (TouchCount - Median) / MAD per Team",
+    x = "Team (Ordered by Final Rank)",
+    y = "Scaled Touch Value (MAD Units)"
+  ) +
+  theme_minimal()
+
+########## Within-Team Variability in Touch Frequency vs Ranking ########## 
+
+# Join variability data to final standings
+Variability_vs_Rank <- Team_touch_variability %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  filter(!is.na(Rank))
+
+# Plot SDTouches vs Rank
+Within_Variability_vs_Rank <- ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTouches)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1) +
+  scale_x_reverse(breaks = 1:14) +
+  labs(
+    title = "Team Variability in Touch vs Final Rank",
+    x = "Final Season Rank",
+    y = "Touch Frequency Variability (SD)"
+  ) +
+  theme_minimal()
+
+Within_Variability_vs_Rank_Stats <- cor.test(Variability_vs_Rank$SDTouches, Variability_vs_Rank$Rank)
+
+```
+
+# Results for Sub-Hypothesis 1
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+TouchesPerGame_vs_rank
+
+MAD_TouchesPerGame_vs_rank
+
+Within_Variability_vs_Rank
+```
+
+## **Hypothesis 2: Inter-Match Variability**
+
+*The frequency of pro-social touch across teams may vary due to confounding variables such as team culture or tactics. Therefore, instead of analyzing team to team variations, we suggest that the inter-match variability of pro-social touches within an individual team could be used as an indicator for individual match outcomes. We propose that teams with more pro-social touches within a match than their respective season average are more likely to have a higher goal differential.*
+
+Note: Whereas hypothesis 1 looked at outcomes for the whole season, hypothesis 2 is looking at a match level outcome. 
+
+Additionally, I ran a Wilcoxon test in fear that the results were perhaps not nicely distributed.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Inter-Match Variability Hypothesis
+# For more information on these data frames please look at the README.md file
+
+library(tidyverse)
+library(data.table)
+library(broom)
+library(janitor)
+library(readxl)
+library(rmarkdown)
+library(readr)
+library (dplyr)
+
+#Ensure to use the correct dfs. Touches_final and Matches_final are correct. They only include assigned rater data, no repeat matches
+
+#Check to make sure data frames are loaded:
+if (!exists("Touches_final") | !exists("Matches_final") | !exists("FinalStandings") | !exists("Touches_CoreHyp")) {
+  stop("Touches_final, Matches_final, Touhe_CoreHyp or FinalStandings not loaded. Check Data_Management.R and Core_Hypothesis.R.")
+}
+
+############## Inter-Match Variability Hypothesis ############## 
+
+# Basically asking: "When a team is more (or less) touchy than usual, do they score more or less goals than their opponent?"
+# Note that this is still using same CoreHyp touches (therefore only prosocial touches and not including GF, GA, Subs etc)
+
+#Clean Match column data for use
+Matches_final_cleaned <- Matches_final %>%
+  mutate(
+    GoalsFor = as.numeric(str_trim(GoalsFor)),
+    GoalsAgainst = as.numeric(str_trim(GoalsAgainst))
+  )
+
+#Get TeamID into Matches_final
+Matches_finalID <- Matches_final_cleaned %>%
+  mutate(
+    MatchID = str_pad(MatchID, width = 4, pad = "0"),  # in case it was shortened
+    TeamID = str_sub(MatchID, 1, 2),                     # preserve leading zeros
+    GoalDiff = GoalsFor - GoalsAgainst
+  )
+
+# Prosocial touches per team per match
+Touches_per_match <- Touches_CoreHyp %>%
+  group_by(Team, SeasonMatchNumber) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
+# Average touch per team over the season
+Team_season_avg <- Touches_per_match %>%
+  group_by(Team) %>%
+  summarise(SeasonAvgTouch = mean(TouchCount), .groups = "drop")
+
+# Merge & calculate scaled deviation from average
+Touches_scaled_dev <- Touches_per_match %>%
+  left_join(Team_season_avg, by = "Team") %>%
+  mutate(ScaledAboveAvg = TouchCount - SeasonAvgTouch) # positive = more touchy than average, neg = less touchy than average
+
+# Joins dataframes (goal differetials to the touches scaled)
+Touch_GoalDiff_Analysis <- Touches_scaled_dev %>%
+  left_join(
+    Matches_finalID %>% select(SeasonMatchNumber, TeamID, GoalDiff),
+    by = c("SeasonMatchNumber", "Team" = "TeamID")
+  )
+
+# Visualize 
+Touch_GoalDiff_Analysis_Graph <- ggplot(Touch_GoalDiff_Analysis, aes(x = ScaledAboveAvg, y = GoalDiff)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  labs(
+    title = "Touch Count Deviation vs Match Goal Differential",
+    x = "Touches Above/Below Team Average",
+    y = "Goal Differential",
+    caption = "Note: Each dot represents one match outcome for a team, therefore 2 dots for each match"
+  ) +
+  theme_minimal()
+
+# Pearson
+Touch_GoalDiff_Analysis_Stats <- cor.test(Touch_GoalDiff_Analysis$ScaledAboveAvg, Touch_GoalDiff_Analysis$GoalDiff)
+
+############## Wilcoxon: Inter-Match Variability Hypothesis ############## 
+
+# Wilcoxon: Perhaps not nicely distributed: “Do teams tend to have higher goal differentials when they are more touchy than their season average?”
+
+# Create AboveAvgTouch flag
+Touch_AboveBelow_Analysis <- Touch_GoalDiff_Analysis %>%
+  mutate(AboveAvgTouch = ScaledAboveAvg > 0)
+
+# Summary of goal differentials by touch group
+Touch_AboveBelow_Analysis %>%
+  group_by(AboveAvgTouch) %>%
+  summarise(
+    n = n(),
+    mean_GD = mean(GoalDiff, na.rm = TRUE),
+    median_GD = median(GoalDiff, na.rm = TRUE),
+    sd_GD = sd(GoalDiff, na.rm = TRUE)
+  )
+
+# Wilcoxon rank-sum test
+Wilcox_Test <- wilcox.test(GoalDiff ~ AboveAvgTouch, data = Touch_AboveBelow_Analysis)
+
+# Visualize Wilcoxon
+Wilcox_Test_Graph <- ggplot(Touch_AboveBelow_Analysis, aes(x = AboveAvgTouch, y = GoalDiff)) +
+  geom_boxplot(fill = "lightblue") +
+  scale_x_discrete(labels = c("FALSE" = "Below Avg Touch", "TRUE" = "Above Avg Touch")) +
+  labs(
+    title = "Goal Differential by Above/Below Avg Touch",
+    x = "Above Team's Avg Touch?",
+    y = "Goal Differential"
+  ) +
+  theme_minimal()
+
+```
+
+# Results for Hypothesis 2:
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+Touch_GoalDiff_Analysis_Graph
+
+Touch_GoalDiff_Analysis_Stats
+
+Wilcox_Test
+
+Wilcox_Test_Graph 
+```
+
+## **Hypothesis 3: Underdog Hypothesis**
+
+*Teams with greater frequencies of pro-social touch when competing against higher ranked teams will secure a better goal differential than teams with fewer touch instances facing an opponent of the same spread in rankings.* 
+
+Definition of *spread*: Spread in rankings is defined as the difference in current standings the teams have between each other. Therefore, the 1st ranked team competing against the 7th ranked team has the same spread as the 7th ranked team playing against the 14th ranked team. This could expose a team's cohesion by how they react when facing adversity.
+
+Touch is scaled again using MAD.
+
+I used both an ANOVA (which described nothing of interest) and a GAM model (which I love).
+
+Note: First 13 matches of season are excluded. Not all teams play the first weekend of the season. Therefore, the current standings only have a 'comprehensive picture' going into the 3rd weekend. In other words, after match 13, at least every team has completed 1 game.
+
+Additionally, for the categorical analysis I arbitrarily determined that a spread between 0-7 was a "mild underdog" or a "mild favorite. A spread greater than 7 was considered "major". This is simply because there are 14 teams in the league and a spread of 7 would place a team on teh other half of the table. 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Underdog Hypothesis
+
+library(tidyverse)
+library(data.table)
+library(broom)
+library(janitor)
+library(readxl)
+library(rmarkdown)
+library(readr)
+library (dplyr)
+library(plotly)
+library(mgcv)
+library(ggplot2)
+library(forcats)
+
+#Ensure to use the correct dfs. Touches_final and Matches_final are correct. They only include assigned rater data, no repeat matches
+
+#Check to make sure data frames are loaded:
+
+if (!exists("Touches_final") | !exists("Touches_scaled") | !exists("Matches_finalID") | !exists("FinalStandings") | !exists("Touches_CoreHyp")) {
+  stop("Touches_final, Matches_final, Touhe_CoreHyp or FinalStandings not loaded. Check Data_Management.R and Core_Hypothesis.R.")
+}
+
+############################ Underdog Hypothesis ############################
+
+# Clean Match column data for use
+Matches_final_cleaned_CurrentStandings <- Matches_final %>%
+  mutate(
+    GoalsFor = as.numeric(str_trim(GoalsFor)),
+    GoalsAgainst = as.numeric(str_trim(GoalsAgainst)),
+    CurrentStanding = as.numeric(str_trim(CurrentStanding)),
+    MatchID = str_pad(MatchID, width = 4, pad = "0"),  # ensure 4-digit MatchID
+    TeamID = str_sub(MatchID, 1, 2),                   # extract TeamID from MatchID
+    SeasonMatchNumber = as.numeric(SeasonMatchNumber)  # ensure it can be compared numerically
+  ) %>%
+  filter(SeasonMatchNumber > 13)  # exclude first 13 matches
+
+# Get the spread into the info for each team
+Matches_final_Spread <- Matches_final_cleaned_CurrentStandings %>%
+  rename_with(~ paste0(.x, "_self")) %>% #renames every column so that you know which row refers to the self team of analysis
+  inner_join(
+    Matches_final_cleaned_CurrentStandings,
+    by = c("SeasonMatchNumber_self" = "SeasonMatchNumber") # joins data frame to itself, matching each game via seasonmatchnumber (_self is of interst) (wihtout is opponent)
+  ) %>%
+  filter(TeamID_self != TeamID) %>%  # Make sure we’re not joining a row to itself
+  mutate(
+    GoalDiff = GoalsFor_self - GoalsAgainst_self,
+    Spread = CurrentStanding - CurrentStanding_self  # positive = better ranked than opponent, negative = underdog
+  ) %>%
+  select(
+    SeasonMatchNumber = SeasonMatchNumber_self,
+    MatchID = MatchID_self,
+    TeamID = TeamID_self,
+    GoalDiff,
+    Spread,
+    CurrentStanding = CurrentStanding_self,
+    OpponentTeamID = TeamID,
+    OpponentStanding = CurrentStanding
+  )
+
+#Correcting data types
+Touches_scaled_numeric <- Touches_scaled %>%
+  mutate(
+    SeasonMatchNumber = as.numeric(SeasonMatchNumber),
+    Team = as.character(Team)  # just to ensure consistency
+  )
+
+# Data frame creation for Underdog analysis
+Underdog_Analysis <- Matches_final_Spread %>%
+  left_join(
+    Touches_scaled_numeric,
+    by = c("SeasonMatchNumber", "TeamID" = "Team")
+  )
+
+############################ Observed Data Table Summary | Underdog Hypothesis ############################
+
+spread_cutoff <- 7 #arbitrary spread number: I like 7 because it separates the table in half (1st rank team playing against bottom half of table)
+
+# Categorize real match data into underdog/favored + touch level
+Underdog_Observed_Summary <- Underdog_Analysis %>%
+  filter(!is.na(GoalDiff) & !is.na(ScaledTouch) & !is.na(Spread)) %>%  # ensure clean data
+  mutate(
+    SpreadGroup = case_when(
+      Spread <= -spread_cutoff ~ "Major Underdog",
+      Spread > -spread_cutoff & Spread < 0 ~ "Mild Underdog",
+      Spread == 0 ~ "Even",
+      Spread > 0 & Spread < spread_cutoff ~ "Mild Favorite",
+      Spread >= spread_cutoff ~ "Major Favorite"
+    ),
+    TouchGroup = case_when(
+      ScaledTouch >= 1 ~ "High Touch",
+      ScaledTouch <= -1 ~ "Low Touch",
+      TRUE ~ "Average Touch"
+    )
+  ) %>%
+  group_by(SpreadGroup, TouchGroup) %>%
+  summarise(
+    MeanObservedGD = mean(GoalDiff, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(SpreadGroup, TouchGroup)
+
+#Bar chart for this data: I think easier to understand than the cool looking 3D chart generated below.
+# Set factor levels for order
+spread_levels <- c("Major Underdog", "Mild Underdog", "Even", "Mild Favorite", "Major Favorite")
+touch_levels <- c("Low Touch", "Average Touch", "High Touch")
+
+# Make sure SpreadGroup and TouchGroup are ordered
+Underdog_Observed_Summary <- Underdog_Observed_Summary %>%
+  mutate(
+    SpreadGroup = factor(SpreadGroup, levels = spread_levels),
+    TouchGroup = factor(TouchGroup, levels = touch_levels)
+  )
+
+# Plot observed data
+Barchart_Categorical_Data <- ggplot(Underdog_Observed_Summary, aes(x = SpreadGroup, y = MeanObservedGD, fill = TouchGroup)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  geom_text(
+    aes(label = paste0("n=", n)),
+    position = position_dodge(width = 0.8),
+    vjust = ifelse(Underdog_Observed_Summary$MeanObservedGD >= 0, -0.5, 1.2),
+    size = 3.5
+  ) +
+  scale_fill_brewer(palette = "Blues") +
+  labs(
+    title = "Observed Goal Differential by Underdog/Favorite Status and Touch Level",
+    x = "Underdog/Favorite Status (Spread Group)",
+    y = "Mean Goal Differential",
+    fill = "Touch Level"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Statistically compare goal differentials across spreadgroup and touchgroup
+# Via a two-way ANOVa 
+# Make sure grouping variables are factors
+Underdog_Observed_ANOVA <- Underdog_Analysis %>%
+  filter(!is.na(GoalDiff) & !is.na(ScaledTouch) & !is.na(Spread)) %>%
+  mutate(
+    SpreadGroup = case_when(
+      Spread <= -spread_cutoff ~ "Major Underdog",
+      Spread > -spread_cutoff & Spread < 0 ~ "Mild Underdog",
+      Spread == 0 ~ "Even",
+      Spread > 0 & Spread < spread_cutoff ~ "Mild Favorite",
+      Spread >= spread_cutoff ~ "Major Favorite"
+    ),
+    TouchGroup = case_when(
+      ScaledTouch >= 1 ~ "High Touch",
+      ScaledTouch <= -1 ~ "Low Touch",
+      TRUE ~ "Average Touch"
+    ),
+    SpreadGroup = factor(SpreadGroup, levels = spread_levels),
+    TouchGroup = factor(TouchGroup, levels = touch_levels)
+  )
+
+# Run Two-Way ANOVA
+anova_result <- aov(GoalDiff ~ SpreadGroup * TouchGroup, data = Underdog_Observed_ANOVA)
+summary(anova_result)
+TukeyHSD(anova_result)
+
+#Summary Table of Means and SDs per Group
+Underdog_Observed_ANOVA %>%
+  group_by(SpreadGroup, TouchGroup) %>%
+  summarise(
+    Mean_GD = mean(GoalDiff, na.rm = TRUE),
+    SD_GD = sd(GoalDiff, na.rm = TRUE),
+    n = n(),
+    .groups = "drop"
+  ) %>%
+  arrange(SpreadGroup, TouchGroup)
+
+#ANOVA categorically dos not say that spread AND touch together affects goal differential
+#It does say that underdogs are more likely to lose (duh) and that more touch is better (duh)
+#Look at GAM Model to see other stuff, there it creates a a relationship between the three values
+
+############################ GAM Model | Underdog Hypothesis ############################
+
+#This is asking: If a team is more/less touchy than usual, and they are underdog/overdog, how does this impact the goal differenetial?
+
+# Fit GAM model to allow for nonlinear effects
+
+# Changing k = 15 creates completely flattens slope
+gam_model <- gam(
+  GoalDiff ~ s(Spread, ScaledTouch, k = 100, bs = "tp"),  # increase k for smoother fit
+  data = Underdog_Analysis
+)
+
+# Create grid for predictions
+spread_seq <- seq(min(Underdog_Analysis$Spread, na.rm = TRUE),
+                  max(Underdog_Analysis$Spread, na.rm = TRUE), length.out = 50)
+touch_seq <- seq(min(Underdog_Analysis$ScaledTouch, na.rm = TRUE),
+                 max(Underdog_Analysis$ScaledTouch, na.rm = TRUE), length.out = 50)
+
+grid <- expand.grid(Spread = spread_seq, ScaledTouch = touch_seq)
+grid$GoalDiff <- predict(gam_model, newdata = grid)
+
+# Convert to matrix for surface
+z_matrix <- matrix(grid$GoalDiff, nrow = length(spread_seq), ncol = length(touch_seq))
+
+# 3D Plot: See below in next R chunk
+#Note: Each dot represents one match outcome for a team, therefore 2 dots for each match
+# plot_ly() %>%
+#   add_surface(
+#     x = ~spread_seq,
+#     y = ~touch_seq,
+#     z = ~z_matrix,
+#     colorscale = list(
+#       c(0, "red"),  # red for losses
+#       c(1, "green")   # green for wins
+#     ),
+#     cmin = min(Underdog_Analysis$GoalDiff, na.rm = TRUE),
+#     cmax = max(Underdog_Analysis$GoalDiff, na.rm = TRUE),
+#     opacity = 0.7,
+#     showscale = TRUE
+#   ) %>%
+#   add_markers(
+#     data = Underdog_Analysis,
+#     x = ~Spread,
+#     y = ~ScaledTouch,
+#     z = ~GoalDiff,
+#     marker = list(
+#       size = 3,
+#       color = ~GoalDiff,
+#       colorscale = list(c(0, "#ff0000"), c(1, "#00ff00")),  # flipped: red = low, green = high
+#       cmin = min(Underdog_Analysis$GoalDiff, na.rm = TRUE),
+#       cmax = max(Underdog_Analysis$GoalDiff, na.rm = TRUE)
+#     ),
+#     name = "Observed"
+#   ) %>%
+#   layout(
+#     title = "Underdog Hypothesis: Spread x Touch Deviation x Goal Differential",
+#     scene = list(
+#       xaxis = list(title = "Spread (Opponent Rank - Team Rank)"),
+#       yaxis = list(title = "Scaled Touch Deviation"),
+#       zaxis = list(title = "Goal Differential")
+#     )
+#   )
+
+
+############################ GAM Model CATEGORICAL Table Summary (Interpretation of GAM) | Underdog Hypothesis ############################
+
+# Evaluates how a team's goal differential is predicated by a model across a spectrum of two predictors:
+# Predictor One = Ranking Spread
+# Predictor Two = Scaled Touch Deviation (how much more or less physical touch a team used compared to their norm)
+
+# Backpedals to the observed table CATEGORICAL idea. 
+
+# Define a grid of Spread and ScaledTouch values
+# Create a sequence of 100 evenly spaced values from smallest to largest spread
+spread_vals <- seq(min(Underdog_Analysis$Spread, na.rm = TRUE),
+                   max(Underdog_Analysis$Spread, na.rm = TRUE),
+                   length.out = 100)
+
+# Create a sequence of 100 evenly spaced values from smallest to largest touch
+touch_vals <- seq(min(Underdog_Analysis$ScaledTouch, na.rm = TRUE),
+                  max(Underdog_Analysis$ScaledTouch, na.rm = TRUE),
+                  length.out = 100)
+
+# Create a ten thousand row data frame by combining all hundred by hundred values above
+grid <- expand.grid(Spread = spread_vals, ScaledTouch = touch_vals)
+
+# Predict GoalDiff across the grid on each fake game (ten thousand of them)
+grid$PredictedGoalDiff <- predict(gam_model, newdata = grid)
+
+#Note choice of 7 as the cutoff is somewhat arbitrary
+grid_summary <- grid %>%
+  mutate(
+    SpreadGroup = case_when(
+      Spread <= -spread_cutoff ~ "Major Underdog",
+      Spread > -spread_cutoff & Spread < 0 ~ "Mild Underdog",
+      Spread == 0 ~ "Even",
+      Spread > 0 & Spread < spread_cutoff ~ "Mild Favorite",
+      Spread >= spread_cutoff ~ "Major Favorite"
+    ),
+    TouchGroup = case_when(
+      ScaledTouch >= 1 ~ "High Touch",
+      ScaledTouch <= -1 ~ "Low Touch",
+      TRUE ~ "Average Touch"
+    )
+  ) %>%
+  group_by(SpreadGroup, TouchGroup) %>%
+  summarise(
+    MeanPredGD = mean(PredictedGoalDiff, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(SpreadGroup, TouchGroup)
+
+#Bar graph to see the GAM model major/mild underdogs versus tables
+# Set same factor levels for consistency
+grid_summary <- grid_summary %>%
+  mutate(
+    SpreadGroup = factor(SpreadGroup, levels = spread_levels),
+    TouchGroup = factor(TouchGroup, levels = touch_levels)
+  )
+
+# Plot GAM model data
+GAM_Model_Data_Plot <- ggplot(grid_summary, aes(x = SpreadGroup, y = MeanPredGD, fill = TouchGroup)) +
+  geom_col(position = position_dodge(width = 0.8), width = 0.7) +
+  scale_fill_brewer(palette = "Blues") +
+  labs(
+    title = "GAM Model Predicted Goal Differential by Underdog/Favorite Status and Touch Level",
+    x = "Underdog/Favorite Status (Spread Group)",
+    y = "Predicted Goal Differential",
+    fill = "Touch Level"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+
+```
+
+#Output for Hypothesis 3:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+Barchart_Categorical_Data
+
+# 3D Plot
+#Note: Each dot represents one match outcome for a team, therefore 2 dots for each match
+plot_ly() %>%
+  add_surface(
+    x = ~spread_seq,
+    y = ~touch_seq,
+    z = ~z_matrix,
+    colorscale = list(
+      c(0, "red"),  # red for losses
+      c(1, "green")   # green for wins
+    ),
+    cmin = min(Underdog_Analysis$GoalDiff, na.rm = TRUE),
+    cmax = max(Underdog_Analysis$GoalDiff, na.rm = TRUE),
+    opacity = 0.7,
+    showscale = TRUE
+  ) %>%
+  add_markers(
+    data = Underdog_Analysis,
+    x = ~Spread,
+    y = ~ScaledTouch,
+    z = ~GoalDiff,
+    marker = list(
+      size = 3,
+      color = ~GoalDiff,
+      colorscale = list(c(0, "#ff0000"), c(1, "#00ff00")),  # flipped: red = low, green = high
+      cmin = min(Underdog_Analysis$GoalDiff, na.rm = TRUE),
+      cmax = max(Underdog_Analysis$GoalDiff, na.rm = TRUE)
+    ),
+    name = "Observed"
+  ) %>%
+  layout(
+    title = "Underdog Hypothesis: Spread x Touch Deviation x Goal Differential",
+    scene = list(
+      xaxis = list(title = "Spread (Opponent Rank - Team Rank)"),
+      yaxis = list(title = "Scaled Touch Deviation"),
+      zaxis = list(title = "Goal Differential")
+    )
+  )
+
+GAM_Model_Data_Plot
+
+```
+

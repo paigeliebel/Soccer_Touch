@@ -51,7 +51,7 @@ Team_Touches_Standings <- FinalStandings %>%
   filter(!is.na(TotalTouches))
 
 #Plot with regression line : final rankings to frequency of touch
-ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches)) +
+TouchFreq_vs_FinalStandings <- ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches)) +
   geom_point(size = 3) +
   geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1) +
   scale_x_reverse() +
@@ -62,7 +62,7 @@ ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches)) +
   ) +
   theme_minimal()
 
-cor_result <- cor.test(Team_Touches_Standings$TotalTouches, Team_Touches_Standings$Rank)
+TouchFreq_vs_FinalStandings_Stats <- cor_result <- cor.test(Team_Touches_Standings$TotalTouches, Team_Touches_Standings$Rank)
 
 ############################ Within-Team Variability in Touch Frequency ############################ 
 
@@ -92,7 +92,7 @@ Touches_per_game_ranked <- Touches_per_game %>%
   filter(!is.na(Rank))  # make sure we only include ranked teams
 
 # Visualize 
-ggplot(Touches_per_game_ranked, aes(x = Rank, y = TouchCount, group = Rank)) +
+TouchesPerGame_vs_rank <- ggplot(Touches_per_game_ranked, aes(x = Rank, y = TouchCount, group = Rank)) +
   geom_boxplot(fill = "lightblue", color = "black") +
   scale_x_reverse(breaks = 1:14) +  # clean 1–14 axis
   labs(
@@ -120,7 +120,7 @@ Touches_scaled_ranked <- Touches_scaled %>%
   filter(!is.na(Rank))
 
 # Plot of MAD
-ggplot(Touches_scaled_ranked, aes(x = Rank, y = ScaledTouch, group = Rank)) +
+MAD_TouchesPerGame_vs_rank <- ggplot(Touches_scaled_ranked, aes(x = Rank, y = ScaledTouch, group = Rank)) +
   geom_boxplot(fill = "lightblue", color = "black") +
   geom_hline(yintercept = c(-2, 2), linetype = "dashed", color = "red") +
   scale_x_reverse(breaks = 1:14) +  # clean 1–14 axis
@@ -141,7 +141,7 @@ Variability_vs_Rank <- Team_touch_variability %>%
   filter(!is.na(Rank))
 
 # Plot SDTouches vs Rank
-ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTouches)) +
+Within_Variability_vs_Rank <- ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTouches)) +
   geom_point(size = 3) +
   geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1) +
   scale_x_reverse(breaks = 1:14) +
@@ -152,9 +152,9 @@ ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTouches)) +
   ) +
   theme_minimal()
 
-cor_result_var <- cor.test(Variability_vs_Rank$SDTouches, Variability_vs_Rank$Rank)
+Within_Variability_vs_Rank_Stats <- cor.test(Variability_vs_Rank$SDTouches, Variability_vs_Rank$Rank)
 
-print(cor_result_var)
+
 
 #Following looks at the number of subs each team has over the season and number of corners etc (looking at match data)
 # #Number of subs:
