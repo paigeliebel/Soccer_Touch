@@ -7,15 +7,15 @@ date: "2025-06-18"
 ---
 ## Introduction
 
-Hi team! This is my first true stab at the data. I addressed 4 different hypotheses, each with their own sections. The first hypothesis do not seem to have any 'positive' outcome however the last three show some promise. With full intention to bias you, the underdog hypothesis (number 3) is my favorite.
+Hi team! This is my first true stab at the data. I addressed 4 different hypotheses, each with their own sections. The first hypothesis does not seem to have a 'positive' outcome however the last three show some promise. With full intent to bias you, the underdog hypothesis (number 3) is my favorite.
 
-I will step through each of the hypotheses in order, with their corresponding R-code and outputs.
+I will step through each of the hypotheses in order, with their corresponding R-code,  outputs, and a quick discussion.
 
-At the end, I have a quick mention to the Inter-Rater analysis.
+At the end, I have a quick mention to the Inter-Rater analysis. I had hoped to find a way to automate an event by event comparison, however the task seems to beating me. I am currently only doing ICC for sheer frequency of touches across each inter-rater match.
 
-Here is also a link to the git-hub repository containing my code and the raw data spreadsheets if you would like to take a look. I may have to give you permission to access them, apologies for the extra step: [Click here for Git-hub code link] (https://github.com/paigeliebel/Soccer_Touch.git)
+Additionally, here is a link to the git-hub repository containing my code and the raw data spreadsheets if you would like to take a look. I may have to give you permission to access them, apologies for the extra step: (https://github.com/paigeliebel/Soccer_Touch.git)
 
-For readability, the code required for cleaning, merging, and fixing typos in the data frames was hidden from this report. You can see the code in the github.
+For readability, the code required for cleaning, merging, and fixing typos in the data frames was excluded from this report. You can see the code in the github.
 
 ```{r DataSetup, message=FALSE, warning=FALSE, include=FALSE}
 # Data_Management
@@ -354,10 +354,6 @@ Matches_interrater <- Matches %>%
 
 **Core Hypothesis**: *Pro-social touches between teammates may serve as an indicator for overall team cohesion. Therefore, we propose that teams with a greater frequency of these interactions will secure higher positions in the season’s final standings.*
 
-**Sub-Hypothesis 1**: *Teams that show less variability across matches throughout a season with regards to their touch will secure higher positions in the season's final standings.*
-
-For the Sub-Hypothesis the touches were scaled for each team based on distance from mean (MAD-based z-score). Some teams are 'touchier' than others.
-
 Definitions:
 
 Pro-social touches are defined as all haptic rituals recorded excluding: Tactical Adjustments, Collisions, and Negative Touch
@@ -420,7 +416,17 @@ TouchFreq_vs_FinalStandings
 TouchFreq_vs_FinalStandings_Stats
 ```
 
-# Sub-Hypothesis 1
+As seen in the results above, there does NOT appear to be a strong correlation between total frequency of pro-social touch and overall end of season success. This is counter to the Kraus Basketball paper who concluded more touch leads to more success. 
+
+However, I am interested in looking at other factors that could be indicative of touch paired to end of season success. The fact that I excluded goal celebrations is vital. Could we include Goal Celebration touches but control for the number of goals scored?
+
+Perhaps, I can convince one of the masters students to dive into these other hypotheses. 
+
+## Sub-Hypothesis 1
+
+**Hypothesis 1.a**: *Teams that show less variability across matches throughout a season with regards to their touch will secure higher positions in the season's final standings.*
+
+For the Sub-Hypothesis the touches were scaled for each team based on MAD (mean absolute distance). There was a need to scale touch per team as some teams are 'touchier' than others.
 
 ```{r SubHyp1, echo=TRUE, message=FALSE, warning=FALSE}
 ########## Within-Team Variability in Touch Frequency ########## 
@@ -513,18 +519,86 @@ Within_Variability_vs_Rank <- ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTo
 
 Within_Variability_vs_Rank_Stats <- cor.test(Variability_vs_Rank$SDTouches, Variability_vs_Rank$Rank)
 
+#In regards to within-team variability including MAD scaling
+
+Team_scaled_variability <- Touches_scaled %>%
+  group_by(Team) %>%
+  summarise(
+    SD_ScaledTouch = sd(ScaledTouch),
+    NumGames = n(),
+    .groups = "drop"
+  )
+
+Team_scaled_variability_ranked <- Team_scaled_variability %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  filter(!is.na(Rank))
+
+Team_scaled_variability_ranked_plot <- ggplot(Team_scaled_variability_ranked, aes(x = Rank, y = SD_ScaledTouch)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "red", linewidth = 1) +
+  scale_x_reverse(breaks = 1:14) +
+  labs(
+    title = "Team Variability (SD of Scaled Touch) vs Final Rank",
+    x = "Final Season Rank",
+    y = "SD of Scaled Touch (MAD units)"
+  ) +
+  theme_minimal()
+
+ScaledTouch_Variability_vs_Rank_Stats <- cor.test(
+  Team_scaled_variability_ranked$SD_ScaledTouch,
+  Team_scaled_variability_ranked$Rank
+)
+
 ```
 
 # Results for Sub-Hypothesis 1
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 TouchesPerGame_vs_rank
+```
 
+The above graph is showing a breakdown of within-team touch variation per game. Each block is one team, with the most successful team ranked in place 1 on the far right. Each team played 26 games throughout the season. Therefore, each block has 26 data points from which is being built. 
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 MAD_TouchesPerGame_vs_rank
 
+```
+
+The above graph is similar to the previous one, however it scales the touches. 
+
+MAD was used instead of SD due to the non-normal nature of the data. 
+
+The following formulas were used:
+
+**Mean Absolute Deviation (MAD)**
+$$
+\text{MAD} = \text{median} \left( \left| X_i - \text{median}(X) \right| \right)
+$$
+**Scaled Touch**
+$$
+\text{ScaledTouch}_i = \frac{ X_i - \text{median}(X) }{ \text{MAD} }
+$$
+
+Then I looked at the with-in team  variation across teams. In other words, does consistency of touch frequencies correlate to end of season standings? I looked at just standard deviation of overall touch, not scaled:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 Within_Variability_vs_Rank
 
 Within_Variability_vs_Rank_Stats
 ```
+
+Then I took a look at the scaled touch version:
+
+```{r}
+Team_scaled_variability_ranked_plot
+
+ScaledTouch_Variability_vs_Rank_Stats
+
+```
+
+Neither proved to be statistically significant. 
+
+With the scaled version, there is a moderate positive correlation: a higher SD of scaled touch is somewhat associated with worse ranking. In other words, there is a slight possible relationship between more consistency of touch frequency and end of season ranking.
 
 ## **Hypothesis 2: Inter-Match Variability**
 
@@ -534,7 +608,9 @@ Statistically Significant Results. Yay.
 
 Note: Whereas hypothesis 1 looked at outcomes for the whole season, hypothesis 2 is looking at a match level outcome. 
 
-Additionally, I ran a Wilcoxon test in fear that the results were perhaps not nicely distributed.
+Scaling of touch took a simpler approach given that we are looking at individual matches. I did how 'touchy' this match was given a team's season average: ScaledAboveAvg = TouchCount - SeasonAvgTouch 
+
+Additionally, I ran a Wilcoxon test in fear that the results were not nicely distributed.
 
 ```{r Hyp2, echo=TRUE, message=FALSE, warning=FALSE}
 # Inter-Match Variability Hypothesis
@@ -1501,4 +1577,176 @@ Concentration_top3_Stats
 ```
 
 ## **Inter-Rater Reliability: ICC **
+
+```{r}
+#Inter-Rater Analysis
+
+#Goal is to determine how "similar" raters were
+#We have a total of 12 matches that all raters watched
+
+library(tidyverse)
+library(data.table)
+library(broom)
+library(janitor)
+library(readxl)
+library(rmarkdown)
+library(readr)
+library(dplyr)
+library(irr)
+library(fuzzyjoin)
+library(knitr)
+
+
+source("Data_Management.R") #Runs and brings in Matches_final from Data_Management.R script
+
+#Dataframe "Touches_interrater" contains all the touches recorded for this analysis
+
+# Should I exclude
+# Situations excluded from core analysis for these hypotheses: Goals For/Against, Substitutions
+Exclude_Touch <- c("TA", "CO", "NEG")
+Exclude_Situation <- c("GF", "GA", "SUB")
+
+Interrater <- Touches_interrater %>%  #duplicate and filter
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation))
+
+############################ Simple Frequency Check ############################
+
+#Count check per match (simply how many each rater saw)
+
+touch_counts <- Interrater %>%
+  group_by(SeasonMatchNumber, Rater) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
+# Plot frequency per match per rater
+interrater_plot <- ggplot(touch_counts, aes(x = factor(SeasonMatchNumber), y = TouchCount, fill = Rater)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(title = "Touch Count per Match by Rater",
+       x = "Season Match Number",
+       y = "Touch Count") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+###ICC - Intraclass Correlation Coefficient - Interval data:
+
+# reshape your data: rows = matches, columns = raters
+icc_data <- Interrater %>%
+  group_by(SeasonMatchNumber, Rater) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = Rater, values_from = Count)
+
+# Apply ICC (two-way random effects model)
+icc_result <- icc(icc_data[,-1], model = "twoway", type = "agreement", unit = "single")
+
+```
+
+```{r}
+interrater_plot
+```
+
+```{r}
+icc_result
+
+```
+
+## **Data/Sample Sizes**
+
+Quick Summary of Data/Sample Sizes:
+
+Note the filtered touch count is what was mostly used in the above analysis. The cut from about 14000 touch instances to 7000 instances is due to excluding substitutes, goal celebrations, and situations such as collisions which were not defined as pro-social touches. 
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+# Data Summary and Overview
+# Gives Simple overall counts, tables, data make-up etc
+
+library(tidyverse)
+library(data.table)
+library(broom)
+library(janitor)
+library(readxl)
+library(rmarkdown)
+library(readr)
+library (dplyr)
+
+
+############################ Complete data summary | No filtering ############################ 
+
+#Create Tables that summarizes complete data of "Touches_final" and "Matches_final"
+
+Touches_Summary <- Touches_final
+Matches_Summary <- Matches_final
+
+Total_Touch_Instance_count <- nrow(Touches_Summary) #count total number of touches recorded
+
+Total_Match_Count <- n_distinct(Touches_Summary$SeasonMatchNumber) #total number of matches watched
+
+Total_Teams <- n_distinct(Touches_Summary$Team) #teams recorded
+
+Total_Matches_perTeam <- 26 #Matches each team played (verified below)
+
+Summary_Table_A <- tibble(
+  Variable = c("Total_Touch_Instance_count", "Total_Match_Count", "Total_Teams", "Total_Matches_perTeam"),
+  Value = c(
+    nrow(Touches_Summary),
+    n_distinct(Touches_Summary$SeasonMatchNumber),
+    n_distinct(Touches_Summary$Team),
+    26  # Manually verified
+  )
+)
+
+Matches_Summary <- Matches_Summary %>%
+  mutate(TeamName = case_when(
+    TeamName %in% c("Racing Louisville", "Racing louisville FC", "Louisville Racing") ~ "Racing Louisville FC",
+    TeamName %in% c("NC Courage", "Carolina Courage") ~ "North Carolina Courage",
+    TeamName %in% c("KC Current") ~ "Kansas City Current",
+    TeamName %in% c("Chicago Redstar FC") ~ "Chicago Red Stars",
+    TeamName %in% c("Portland Thorns") ~ "Portland Thorns FC",
+    TeamName %in% c("Gotham FC") ~ "NJ/NY Gotham FC",
+    TeamName %in% c("San Diego Wave") ~ "San Diego Wave FC",
+    TeamName %in% c("Seattle Reign") ~ "Seattle Reign FC",
+    TRUE ~ TeamName
+  ))
+
+TeamMatchCounts <- Matches_Summary %>%
+  count(TeamName, name = "MatchesPlayed")
+
+TeamMatchCounts <- TeamMatchCounts %>%
+  left_join(Team_IDs, 
+            by = c("TeamName" = "Team Name 2024 Season"))
+
+ByTeam_Total_Touch_Instance_count <- Touches_Summary %>% 
+  count(Team, name = "Total Season Touches") %>% 
+  rename(TeamID = Team)
+
+TeamMatchCounts <- TeamMatchCounts %>%
+  left_join(ByTeam_Total_Touch_Instance_count, 
+            by = c("TeamID" = "TeamID"))
+
+############################ Core Hyp data summary | Includes filtering ############################ 
+
+Filtered_Touch_Summary <- Touches_CoreHyp
+
+Filtered_Touch_Instance_count <- nrow(Filtered_Touch_Summary)
+
+#Count of frequency of touches per team
+Filtered_Touches_by_team <- Touches_by_team
+
+Filtered_TeamMatchCounts <- TeamMatchCounts %>%
+  left_join(Filtered_Touches_by_team, 
+            by = c("TeamID" = "Team"))
+
+Summary_Table_B <- tibble(
+  Variable = c("Total_Touch_Instance_count", "Filtered_Touch_Instance_count", "Total_Match_Count", "Total_Teams", "Total_Matches_perTeam"),
+  Value = c(
+    Total_Touch_Instance_count,
+    Filtered_Touch_Instance_count,
+    Total_Match_Count,
+    Total_Teams,
+    Total_Matches_perTeam
+  )
+)
+
+Summary_Table_B
+```
+
 

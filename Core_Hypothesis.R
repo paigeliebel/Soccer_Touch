@@ -154,8 +154,36 @@ Within_Variability_vs_Rank <- ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTo
 
 Within_Variability_vs_Rank_Stats <- cor.test(Variability_vs_Rank$SDTouches, Variability_vs_Rank$Rank)
 
+#In regards to within-tea variability including MAD normalization
 
+Team_scaled_variability <- Touches_scaled %>%
+  group_by(Team) %>%
+  summarise(
+    SD_ScaledTouch = sd(ScaledTouch),
+    NumGames = n(),
+    .groups = "drop"
+  )
 
+Team_scaled_variability_ranked <- Team_scaled_variability %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  filter(!is.na(Rank))
+
+Team_scaled_variability_ranked_plot <- ggplot(Team_scaled_variability_ranked, aes(x = Rank, y = SD_ScaledTouch)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = FALSE, color = "red", linewidth = 1) +
+  scale_x_reverse(breaks = 1:14) +
+  labs(
+    title = "Team Variability (SD of Scaled Touch) vs Final Rank",
+    x = "Final Season Rank",
+    y = "SD of Scaled Touch (MAD units)"
+  ) +
+  theme_minimal()
+
+ScaledTouch_Variability_vs_Rank_Stats <- cor.test(
+  Team_scaled_variability_ranked$SD_ScaledTouch,
+  Team_scaled_variability_ranked$Rank
+)
 #Following looks at the number of subs each team has over the season and number of corners etc (looking at match data)
 # #Number of subs:
 # # Step 1: Create a working copy with TeamID and SubCount calculated

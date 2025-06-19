@@ -28,7 +28,7 @@ Total_Teams <- n_distinct(Touches_Summary$Team) #teams recorded
 
 Total_Matches_perTeam <- 26 #Matches each team played (verified below)
 
-Summary_Table <- tibble(
+Summary_Table_A <- tibble(
   Variable = c("Total_Touch_Instance_count", "Total_Match_Count", "Total_Teams", "Total_Matches_perTeam"),
   Value = c(
     nrow(Touches_Summary),
@@ -79,7 +79,7 @@ Filtered_TeamMatchCounts <- TeamMatchCounts %>%
   left_join(Filtered_Touches_by_team, 
             by = c("TeamID" = "Team"))
 
-Summary_Table <- tibble(
+Summary_Table_B <- tibble(
   Variable = c("Total_Touch_Instance_count", "Filtered_Touch_Instance_count", "Total_Match_Count", "Total_Teams", "Total_Matches_perTeam"),
   Value = c(
     Total_Touch_Instance_count,
