@@ -5,11 +5,38 @@ author: "Paige Liebel"
 output: html_document
 date: "2025-06-18"
 ---
-## Introduction
+## Executive Summary
 
-Hi team! This is my first true stab at the data. I addressed 4 different hypotheses, each with their own sections. The first hypothesis does not seem to have a 'positive' outcome however the last three show some promise. With full intent to bias you, the underdog hypothesis (number 3) is my favorite.
+This report presents an initial analysis of pro-social touch behaviors in the NWSL 2024 season, exploring how patterns of touch between teammates may be associated with team performance and match outcomes. Using a dataset of ~14,000 touch instances (filtered to ~7,000 pro-social touches), I tested four primary hypotheses:
 
-I will step through each of the hypotheses in order, with their corresponding R-code,  outputs, and a quick discussion.
+1. **Overall Touch & Team Success**  
+_Hypothesis:_ Teams with higher frequencies of pro-social touch across the season would achieve better final standings.  
+_Finding:_ No strong association was observed between total pro-social touch frequency over the season and final standings (counter to prior findings in basketball). Further work could explore alternate modeling approaches (e.g., controlling for goal celebrations).
+
+2. **Match-Level Touch Variation & Outcomes**  
+_Hypothesis:_ Matches where teams exceeded their typical touch behavior would be associated with better match outcomes.  
+_Finding:_ A significant positive correlation was observed — matches where teams displayed higher-than-usual prosocial touch behavior were associated with more favorable goal differentials.
+
+3. **Underdog Hypothesis**  
+_Hypothesis:_ Higher levels of prosocial touch would be particularly associated with better outcomes for underdog teams facing stronger opponents.  
+_Finding:_ Both observed data and a GAM model indicated that, for underdog teams, higher levels of prosocial touch were associated with more favorable match outcomes — suggesting that prosocial touch may be a useful behavioral marker of cohesion or resilience in challenging contexts.
+
+4. **Social Network & Reciprocity**  
+_Hypothesis:_ Teams with a higher ratio of reciprocal (vs. non-reciprocal) touches, and more evenly distributed touch behaviors across players, would finish higher in the standings.  
+_Finding:_ A higher reciprocal-to-non-reciprocal touch ratio was significantly associated with better standings. Measures of overall touch distribution across players (CV, Gini) were not significantly associated with final standings.
+
+**Inter-Rater Reliability:**  
+An Intraclass Correlation Coefficient (ICC = 0.79) indicates good agreement between coders, providing confidence in the reliability of the dataset.
+
+**Overall Takeaway:**  
+While total season-long touch frequency alone was not associated with team success, the *patterns and contexts* of prosocial touch — particularly in high-pressure or underdog situations — appear meaningfully associated with match outcomes. These early results suggest that prosocial touch behavior may serve as a useful marker of team cohesion and resilience in professional sport, warranting further study.
+
+
+## Introduction for this RMarkdown
+
+Hi team (Anne and Annett)! This is my first true stab at the data. I addressed 4 different hypotheses, each with their own sections. The first hypothesis does not seem to have a 'positive' outcome however the last three show some promise. With full intent to bias you, the underdog hypothesis (number 3) is my favorite.
+
+I will step through each of the hypotheses in order (as seen in the executive summary above), with their corresponding R-code,  outputs, and a quick discussion.
 
 At the end, I have a quick mention to the Inter-Rater analysis. I had hoped to find a way to automate an event by event comparison, however the task seems to beating me. I am currently only doing ICC for sheer frequency of touches across each inter-rater match.
 
@@ -553,13 +580,13 @@ ScaledTouch_Variability_vs_Rank_Stats <- cor.test(
 ```
 
 # Results for Sub-Hypothesis 1
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r subhyp1output, echo=FALSE, message=FALSE, warning=FALSE}
 TouchesPerGame_vs_rank
 ```
 
 The above graph is showing a breakdown of within-team touch variation per game. Each block is one team, with the most successful team ranked in place 1 on the far right. Each team played 26 games throughout the season. Therefore, each block has 26 data points from which is being built. 
 
-```{r echo=FALSE, message=FALSE, warning=FALSE}
+```{r MADoutputhyp1a, echo=FALSE, message=FALSE, warning=FALSE}
 MAD_TouchesPerGame_vs_rank
 
 ```
@@ -608,9 +635,16 @@ Statistically Significant Results. Yay.
 
 Note: Whereas hypothesis 1 looked at outcomes for the whole season, hypothesis 2 is looking at a match level outcome. 
 
-Scaling of touch took a simpler approach given that we are looking at individual matches. I did how 'touchy' this match was given a team's season average: ScaledAboveAvg = TouchCount - SeasonAvgTouch 
+For each team, we calculated how many touches they made in a match above or below their own season average (in raw touch counts). We then tested whether matches where a team touched more than usual were associated with better goal differential, using Pearson correlation and Wilcoxon rank-sum tests. I ran a Wilcoxon test in fear that the results were not nicely distributed.
 
-Additionally, I ran a Wilcoxon test in fear that the results were not nicely distributed.
+To further test whether match outcomes differed between matches with above- or below-average team touch behavior, we conducted a Wilcoxon rank-sum test (non-parametric, due to non-normal distribution of goal differentials). The test compared goal differential in matches where teams touched more than their season average versus those with below-average touch counts.
+
+Scaling of touch took a simpler approach given that we are looking at individual matches. I did how 'touchy' this match was compared to a team's season average:
+
+$$
+\text{ScaledAboveAvg} = \text{TouchCount}_{\text{match}} - \text{SeasonAvgTouch}_{\text{team}}
+$$
+
 
 ```{r Hyp2, echo=TRUE, message=FALSE, warning=FALSE}
 # Inter-Match Variability Hypothesis
@@ -728,11 +762,27 @@ Wilcox_Test_Graph <- ggplot(Touch_AboveBelow_Analysis, aes(x = AboveAvgTouch, y 
 Touch_GoalDiff_Analysis_Graph
 
 Touch_GoalDiff_Analysis_Stats
+```
 
+
+On the graph above: Positive values indicate matches where the team touched more than usual; negative values indicate matches with lower than usual touch counts.
+
+**We observed a statistically significant positive correlation between match-level touch deviation and goal differential (r = 0.31, p < 0.001, 95% CI [0.20, 0.40]). In other words, matches where a team touched more than their season average were associated with higher goal differentials.**
+
+```{r}
 Wilcox_Test
 
 Wilcox_Test_Graph 
 ```
+
+The Wilcoxon test categorized the team to compare two types of matches: matches where the teams touched more than average and matches where the team touched less than average. 
+
+We tested: Did these two groups have different goal differentials?
+
+Reasons to use Wilcoxon: Non-parametric, grouping not by team but simply by above and below average, goal differential is not normally distributed (lots of 1s but not too many 5 or 6).
+
+**Results of Wilcoxon Test: A Wilcoxon rank-sum test showed that goal differentials were significantly higher in matches where teams touched more than their season average compared to matches with below-average touch counts (W = 7714, p < 0.001).**
+
 
 ## **Hypothesis 3: Underdog Hypothesis**
 
@@ -742,13 +792,23 @@ Statistically Significant Result! Yay.
 
 Definition of *spread*: Spread in rankings is defined as the difference in current standings the teams have between each other. Therefore, the 1st ranked team competing against the 7th ranked team has the same spread as the 7th ranked team playing against the 14th ranked team. This could expose a team's cohesion by how they react when facing adversity.
 
-Touch is scaled again using MAD.
+Higher positive spread = strong team vs weak team
+Negative spread = underdog team
+
+In other words → touch might help underdog teams cope with adversity.
+
+For each match, computed how touchy the team was vs. its typical behavior:
+ScaledTouch = (TouchCount - Median) / MAD
 
 I used both an ANOVA (which described nothing of interest) and a GAM model (which I love).
 
 Note: First 13 matches of season are excluded. Not all teams play the first weekend of the season. Therefore, the current standings only have a 'comprehensive picture' going into the 3rd weekend. In other words, after match 13, at least every team has completed 1 game.
 
-Additionally, for the categorical analysis I arbitrarily determined that a spread between 0-7 was a "mild underdog" or a "mild favorite. A spread greater than 7 was considered "major". This is simply because there are 14 teams in the league and a spread of 7 would place a team on teh other half of the table. 
+Additionally, for the categorical analysis I arbitrarily determined that a spread between 0-7 was a "mild underdog" or a "mild favorite. A spread greater than 7 was considered "major". This is simply because there are 14 teams in the league and a spread of 7 would place a team on teh other half of the table.
+
+SpreadGroup = Major Underdog, Mild Underdog, Even, Mild Favorite, Major Favorite
+
+TouchGroup = High Touch (≥1 MAD), Low Touch (≤-1 MAD), Average Touch
 
 ```{r UnderdogHyp, echo=TRUE, message=FALSE, warning=FALSE}
 # Underdog Hypothesis
@@ -1065,10 +1125,28 @@ GAM_Model_Data_Plot <- ggplot(grid_summary, aes(x = SpreadGroup, y = MeanPredGD,
 
 #Output for Hypothesis 3:
 
-```{r OutputUnderdog, echo=FALSE, message=FALSE, warning=FALSE}
-
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 Barchart_Categorical_Data
 
+knitr::kable(
+  Underdog_Observed_Summary,
+  digits = 2,
+  caption = "Observed Mean Goal Differential by Spread and Touch Level"
+)
+
+```
+
+Note: This graph is showing true, observed data. It is not from a model.
+
+For the above graph, a categorical approach was used:
+
+SpreadGroup = Major Underdog, Mild Underdog, Even, Mild Favorite, Major Favorite
+
+TouchGroup = High Touch (≥1 MAD), Low Touch (≤-1 MAD), Average Touch
+
+**In the observed match data, goal differentials were associated with both touch level and underdog/favorite status. Among major underdogs, higher-touch matches were linked to more favorable outcomes (Mean GD = -0.60 for high-touch vs. -1.88 for low-touch matches). Mild underdogs also showed a similar pattern, with high-touch matches associated with positive mean goal differentials (+0.48), compared to negative outcomes for low-touch matches (-1.35). Mild favorites likewise showed more positive outcomes with higher touch. In contrast, among major favorites, touch level appeared to have less association with outcome, as these teams generally won regardless of touch level. These associations suggest that prosocial touch behaviors may be more strongly linked to match outcomes when teams face greater competitive challenges (as underdogs).**
+
+```{r OutputUnderdog, echo=FALSE, message=FALSE, warning=FALSE}
 # 3D Plot
 #Note: Each dot represents one match outcome for a team, therefore 2 dots for each match
 plot_ly() %>%
@@ -1108,9 +1186,57 @@ plot_ly() %>%
     )
   )
 
-GAM_Model_Data_Plot
+gam_model <- gam(GoalDiff ~ s(Spread, ScaledTouch, k = 100, bs = "tp"), data = Underdog_Analysis)
+
+summary(gam_model)
 
 ```
+
+The Generalized Additive Model (GAM) used the following form:
+
+$$
+\text{GoalDiff} \sim s(\text{Spread}, \text{ScaledTouch})
+$$
+
+where \( s() \) is a smooth spline function allowing for nonlinear effects of Spread and ScaledTouch on GoalDiff.
+
+*The GAM model revealed a significant nonlinear association between Spread, ScaledTouch, and Goal Differential (smooth term: edf = 2.0, F = 43.67, p < 0.001). The model explained approximately 23% of the variance in goal differential (adjusted R² = 0.23), supporting the hypothesis that pro-social touch behaviors are linked to match outcomes, particularly in relation to underdog status.*
+
+**The data suggest that when teams are underdogs, using more prosocial touch is linked to better match outcomes — hinting that these behaviors might help teams maintain cohesion and resilience against stronger opponents.**
+
+I then created another bar chart from the model instead of observed values. So this bar chart shows the model’s predicted average outcome (GoalDiff) for each category. 
+
+```{r}
+grid_summary <- grid %>%
+  mutate(
+    SpreadGroup = case_when(
+      Spread <= -spread_cutoff ~ "Major Underdog",
+      Spread > -spread_cutoff & Spread < 0 ~ "Mild Underdog",
+      Spread == 0 ~ "Even",
+      Spread > 0 & Spread < spread_cutoff ~ "Mild Favorite",
+      Spread >= spread_cutoff ~ "Major Favorite"
+    ),
+    TouchGroup = case_when(
+      ScaledTouch >= 1 ~ "High Touch",
+      ScaledTouch <= -1 ~ "Low Touch",
+      TRUE ~ "Average Touch"
+    )
+  ) %>%
+  group_by(SpreadGroup, TouchGroup) %>%
+  summarise(
+    MeanPredGD = mean(PredictedGoalDiff, na.rm = TRUE),
+    .groups = "drop"
+  ) %>%
+  arrange(SpreadGroup, TouchGroup)
+
+GAM_Model_Data_Plot
+
+knitr::kable(grid_summary, digits = 2, caption = "GAM Model Predicted Goal Differential by Spread and Touch Level")
+```
+
+**The GAM-based summary plot highlights that prosocial touch behaviors are most strongly linked to improved outcomes for underdog teams. High-touch underdogs were predicted to perform markedly better than low-touch underdogs, whereas for favored teams, touch level had less impact on predicted outcomes.**
+
+*The observed and modeled results both indicated that match outcomes were associated with varying levels of prosocial touch behavior, particularly in relation to competitive context. In both the raw data and the GAM model, mild underdogs showed the largest positive association between higher touch levels and goal differential. The GAM model further suggested stronger nonlinear associations for mild favorites, with predicted goal differentials increasing with higher touch. Among major favorites, both observed and modeled results showed relatively consistent outcomes across touch levels, though the model indicated a possible association between higher touch and larger predicted margins. These results suggest that prosocial touch frequency may serve as a useful indicator of match dynamics, particularly when teams face moderate competitive adversity.*
 
 ## **Hypothesis 4: Social Network and Reciprocity**
 
@@ -1119,11 +1245,13 @@ Hyp 4b did not.
 
 **Hypothesis 4.a:** *We propose that a higher ratio of reciprocal to non-reciprocal touches is indicative of better team cohesion and therefore correlates to a higher finish in the final season standings.*
 
+$$
+\text{Reciprocal\ Ratio} = \frac{ \text{Number of Reciprocal Touches} }{ \text{Number of Non-Reciprocal Touches} }
+$$
+
 Note: In addition to the situations mentioned previously, Injury Touches were excluded from the reciprocal ratio analysis as they are almost solely non-reciprocal. The injured party rarely touches back as they are in pain on the ground. 
 
 **Hypothesis 4.b:** *We propose that teams with a more even distribution of prosocial touch events across players, both giving and receiving, will finish higher in the final season standings.*
-
-
 
 ```{r Hyp4, echo=TRUE, message=FALSE, warning=FALSE}
 # Social Network Strength Hypothesis
@@ -1558,12 +1686,19 @@ Concentration_top3_Stats <- cor.test(touch_concentration$Top3_Proportion, touch_
 Concentration_top3_Sum <- summary(lm(Top3_Proportion ~ Rank, data = touch_concentration))
 ```
 
-# Output for Hypothesis 4
+# Output for Hypothesis 4a
 ```{r Hyp4Output, echo=FALSE, message=FALSE, warning=FALSE}
 Reciprocal_Ratio_Graph
 
 summary_reciprocal_lm
 
+```
+
+Hypothesis 4a examined whether the ratio of reciprocal to non-reciprocal touch events was associated with final season standings. The results showed a significant association: teams with higher reciprocal touch ratios tended to finish higher in the final standings, suggesting that reciprocal touch behavior may serve as a useful indicator of positive team dynamics.
+
+**The linear model showed that reciprocal touch ratio was significantly associated with final season standings (β = -18.31, p = 0.01, R² = 0.44). Teams with higher reciprocal-to-non-reciprocal touch ratios tended to finish higher in the standings, supporting the hypothesis that reciprocal interactions may reflect stronger team cohesion.**
+
+```{r message=FALSE, warning=FALSE}
 TouchiestPlayers_Rank
 
 CV_TouchConcentraion_Rank
@@ -1573,12 +1708,17 @@ CV_Stats
 Concentration_top3
 
 Concentration_top3_Stats
-
 ```
+
+Hypothesis 4b evaluated whether a more even distribution of touch behaviors across players was linked to team success. Measures of touch concentration (Coefficient of Variation, Gini coefficient, and proportion of touches by top 3 players) were not significantly associated with final rank. This suggests that while reciprocal interactions may be indicative of team cohesion, overall equality of touch distribution across players does not appear to predict season outcomes.
 
 ## **Inter-Rater Reliability: ICC **
 
-```{r}
+To assess inter-rater reliability, we computed an Intraclass Correlation Coefficient (ICC), using a two-way random effects model (agreement, single rater). The ICC assesses consistency in the number of prosocial touches recorded by different raters across the same set of 12 matches. The resulting ICC value provides an estimate of the reliability of the coding protocol for touch frequency.
+
+**The observed ICC of 0.79 indicates that raters showed good consistency in coding prosocial touch frequency, providing confidence in the reliability of the dataset used for further analyses.**
+
+```{r message=FALSE, warning=FALSE}
 #Inter-Rater Analysis
 
 #Goal is to determine how "similar" raters were
@@ -1640,11 +1780,11 @@ icc_result <- icc(icc_data[,-1], model = "twoway", type = "agreement", unit = "s
 
 ```
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 interrater_plot
 ```
 
-```{r}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 icc_result
 
 ```
@@ -1653,7 +1793,7 @@ icc_result
 
 Quick Summary of Data/Sample Sizes:
 
-Note the filtered touch count is what was mostly used in the above analysis. The cut from about 14000 touch instances to 7000 instances is due to excluding substitutes, goal celebrations, and situations such as collisions which were not defined as pro-social touches. 
+Note the filtered touch count is what was mostly used in the above analysis. The cut from about 14000 touch instances to 7000 instances is due to excluding substitutes, goal celebrations, and situations such as collisions which were not defined as pro-social touches.
 
 ```{r echo=TRUE, message=FALSE, warning=FALSE}
 # Data Summary and Overview
@@ -1746,7 +1886,11 @@ Summary_Table_B <- tibble(
   )
 )
 
-Summary_Table_B
+knitr::kable(
+  Summary_Table_B,
+  digits = 0,
+  caption = "Summary of Data and Sample Sizes"
+)
 ```
 
 
