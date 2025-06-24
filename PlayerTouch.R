@@ -2,6 +2,18 @@
 # Hypothesis: players will have higher prosocial touch rate before their first goal/assist contribution
 # For more info on data frames, see README.md
 
+# -----------------------------
+# PLAYER TOUCH — MASTER SCRIPT
+# Includes:
+#   SECTION B — Expanded_v2 (for Role/3/4 plots)
+#   SECTION C — Classic Wilcoxon (BeforeGoal vs NoGoalAssist)
+#   SECTION D — Role × Context (Faceted)
+#   SECTION E — Expanded No-Role (non-facet)
+#   SECTION F — Clean 3-Group
+#   SECTION G — Clean 4-Group
+# Pre-require: Run Core_Hypothesis.R, load Matches + Touches + PlayerMatch
+# -----------------------------
+
 # Libraries
 library(tidyverse)
 library(data.table)
@@ -204,7 +216,94 @@ Touches_PlayerSummary <- players_with_cutoff_matches %>%
     by = "PlayerID"
   )
 
-#Wilcoxon Test
+# --------------
+# SECTION B: Expanded Slicing (build Expanded_v2 for both 3/4/role plots)
+# --------------
+
+# Step B1: Build ExpandedContext_Label (Expanded_v2)
+Touches_PlayerHyp_Expanded_v2 <- player_match_with_goals %>%
+  inner_join(Touches_PlayerHyp, by = c("SeasonMatchNumber", "TeamID")) %>%
+  filter(str_detect(PlayersInvolved, paste0("\\b", PlayerID, "\\b"))) %>%
+  mutate(
+    TouchRole = case_when(
+      Reciprocal %in% c("Y", "G") ~ "Both",
+      ToucherNumber == PlayerID ~ "Toucher",
+      ToucheeNumber == PlayerID ~ "Touchee",
+      TRUE ~ NA_character_
+    ),
+    ExpandedContext_Label = case_when(
+      ScoredOrAssisted == 0 ~ "NoGoalOrAssist",
+      ScoredOrAssisted == 1 & TimeInSeconds <= FirstGoalOrAssistTime ~ "BeforeAnyContribution",
+      ScoredOrAssisted == 1 & TimeInSeconds > FirstGoalOrAssistTime ~ "AfterFirstContribution",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(TouchRole), !is.na(ExpandedContext_Label))
+
+# Step B1b: Build ExpandedContext_Label 4-Group
+Touches_PlayerHyp_Expanded_v2_4group <- player_match_with_goals %>%
+  inner_join(Touches_PlayerHyp, by = c("SeasonMatchNumber", "TeamID")) %>%
+  filter(str_detect(PlayersInvolved, paste0("\\b", PlayerID, "\\b"))) %>%
+  mutate(
+    TouchRole = case_when(
+      Reciprocal %in% c("Y", "G") ~ "Both",
+      ToucherNumber == PlayerID ~ "Toucher",
+      ToucheeNumber == PlayerID ~ "Touchee",
+      TRUE ~ NA_character_
+    ),
+    ExpandedContext_Label = case_when(
+      (ScoredOrAssisted == 0) ~ "NoGoalOrAssist",
+      (Scored == 1 & Assisted == 0 & TimeInSeconds <= FirstScoringTime) ~ "BeforeGoal_OnlyGoal",
+      (Scored == 0 & Assisted == 1 & TimeInSeconds <= FirstAssistingTime) ~ "BeforeAssist_OnlyAssist",
+      (Scored == 1 & Assisted == 1 & TimeInSeconds <= FirstScoringTime) ~ "BeforeGoal_ScoredAndAssist",
+      (Scored == 1 & Assisted == 1 & TimeInSeconds <= FirstAssistingTime) ~ "BeforeAssist_ScoredAndAssist",
+      (Scored == 0 & Assisted == 1 & TimeInSeconds > FirstAssistingTime) ~ "NoGoalButAssistPossible",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(TouchRole), !is.na(ExpandedContext_Label))
+
+# Step B2: Per PlayerID / Match Summary
+Touches_PlayerHyp_summary_role_expanded <- Touches_PlayerHyp_Expanded_v2 %>%
+  group_by(PlayerID, TouchRole, ExpandedContext_Label, SeasonMatchNumber) %>%
+  summarise(
+    Touches = n(),
+    MatchSecondsPlayed = first(MatchSecondsPlayed),
+    TouchRate = Touches / (MatchSecondsPlayed / 60),
+    .groups = "drop"
+  )
+
+# Step B2b: Per PlayerID / Match Summary — 4group
+Touches_PlayerHyp_summary_role_expanded_4group <- Touches_PlayerHyp_Expanded_v2_4group %>%
+  group_by(PlayerID, TouchRole, ExpandedContext_Label, SeasonMatchNumber) %>%
+  summarise(
+    Touches = n(),
+    MatchSecondsPlayed = first(MatchSecondsPlayed),
+    TouchRate = Touches / (MatchSecondsPlayed / 60),
+    .groups = "drop"
+  )
+
+# Step B3: Aggregate avg TouchRate per player
+Touches_PlayerHyp_summary_role_expanded_avg <- Touches_PlayerHyp_summary_role_expanded %>%
+  group_by(PlayerID, TouchRole, ExpandedContext_Label) %>%
+  summarise(
+    Avg_TouchRate = mean(TouchRate, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Step B3b: Aggregate avg TouchRate per player — 4group
+Touches_PlayerHyp_summary_role_expanded_avg_4group <- Touches_PlayerHyp_summary_role_expanded_4group %>%
+  group_by(PlayerID, TouchRole, ExpandedContext_Label) %>%
+  summarise(
+    Avg_TouchRate = mean(TouchRate, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# --------------
+# SECTION C: Classic Wilcoxon test (BeforeGoal vs NoGoalAssist)
+# --------------
+
+# Prepare data
 Touches_PlayerSummary_long <- Touches_PlayerSummary %>%
   pivot_longer(
     cols = c(Avg_TouchRate_BeforeGoal, Avg_TouchRate_BeforeGoalOrAssist, Avg_TouchRate_NoGoalAssist),
@@ -212,11 +311,10 @@ Touches_PlayerSummary_long <- Touches_PlayerSummary %>%
     values_to = "TouchRate"
   )
 
+# Boxplot
 Plot_Wilcox_Player <- ggplot(Touches_PlayerSummary_long, aes(x = Condition, y = TouchRate)) +
   geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
   geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
-  # OPTIONAL: uncomment this if you want to see player-level lines
-  # geom_line(aes(group = PlayerID), color = "gray80", alpha = 0.5) +
   labs(
     title = "Player Prosocial Touch Rates by Match Context",
     x = "Condition",
@@ -227,159 +325,68 @@ Plot_Wilcox_Player <- ggplot(Touches_PlayerSummary_long, aes(x = Condition, y = 
     "Before Goal or Assist",
     "No Goal/Assist"
   )) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    axis.text.x = element_text(angle = 0, hjust = 0.5),
-    panel.grid.major.x = element_blank()
-  )
+  theme_minimal(base_size = 14)
 
-# Filter to players with BOTH values
+# Wilcoxon test pairs
 wilcox_test_df <- Touches_PlayerSummary %>%
   filter(!is.na(Avg_TouchRate_BeforeGoal), !is.na(Avg_TouchRate_NoGoalAssist))
 
-# Wilcoxon Signed-Rank test
 wilcox_test_df_test <- wilcox.test(
   wilcox_test_df$Avg_TouchRate_BeforeGoal,
   wilcox_test_df$Avg_TouchRate_NoGoalAssist,
-  paired = TRUE,
-  alternative = "two.sided"
+  paired = TRUE
 )
+print(wilcox_test_df_test)
 
-#Other Pairs: BeforeGoalOrAssist vs NoGoalAssist
+# --------------
+# SECTION D: Role × Context (Faceted)
+# --------------
 
-wilcox_test_df2 <- Touches_PlayerSummary %>%
-  filter(!is.na(Avg_TouchRate_BeforeGoalOrAssist), !is.na(Avg_TouchRate_NoGoalAssist))
-
-wilcox_test_df2_test <- wilcox.test(
-  wilcox_test_df2$Avg_TouchRate_BeforeGoalOrAssist,
-  wilcox_test_df2$Avg_TouchRate_NoGoalAssist,
-  paired = TRUE,
-  alternative = "two.sided"
-)
-
-#################Comparing roles and context
-
-# 1. Create combined label for Role + Context
+# Add Role_Context
 Touches_PlayerHyp_summary_role_expanded_avg <- Touches_PlayerHyp_summary_role_expanded_avg %>%
   mutate(Role_Context = paste(TouchRole, ExpandedContext_Label, sep = "_"))
 
-# 2. Kruskal-Wallis: does Role+Context affect Avg_TouchRate?
-kruskal_test_overall <- kruskal.test(Avg_TouchRate ~ Role_Context, data = Touches_PlayerHyp_summary_role_expanded_avg)
-print(kruskal_test_overall)
+# Kruskal + Pairwise
+kruskal_test_facet <- kruskal.test(Avg_TouchRate ~ Role_Context, data = Touches_PlayerHyp_summary_role_expanded_avg)
+print(kruskal_test_facet)
 
-# 3. Pairwise Wilcoxon test (adjusted p-values)
-pairwise_overall <- pairwise.wilcox.test(
+pairwise_facet <- pairwise.wilcox.test(
   Touches_PlayerHyp_summary_role_expanded_avg$Avg_TouchRate,
   Touches_PlayerHyp_summary_role_expanded_avg$Role_Context,
   p.adjust.method = "bonferroni"
 )
+print(pairwise_facet)
 
-print(pairwise_overall)
-
-
-# 4. Boxplot with ggsignif + sample sizes
-
-# Sample sizes:
+# Faceted Plot
 sample_sizes <- Touches_PlayerHyp_summary_role_expanded_avg %>%
-  group_by(Role_Context) %>%
-  summarise(n = n(), .groups = "drop")
+  group_by(Role_Context) %>% summarise(n = n())
 
-# Merge into data:
 Touches_PlayerHyp_summary_role_expanded_avg_plot <- Touches_PlayerHyp_summary_role_expanded_avg %>%
   left_join(sample_sizes, by = "Role_Context") %>%
   mutate(label = paste0(Role_Context, "\n(n=", n, ")"))
 
-# All pairwise comparisons:
-all_levels <- unique(Touches_PlayerHyp_summary_role_expanded_avg_plot$label)
-comparisons_all <- combn(all_levels, 2, simplify = FALSE)
-
-# Final Plot:
 Plot_RoleContext <- ggplot(Touches_PlayerHyp_summary_role_expanded_avg_plot, aes(x = label, y = Avg_TouchRate)) +
   geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
   geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
-  geom_signif(comparisons = comparisons_all, map_signif_level = TRUE, step_increase = 0.1) +
   labs(
     title = "Prosocial Touch Rates — Role × Context",
     x = "Role and Context",
     y = "Avg Touch Rate (touches per min)"
   ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_blank()
-  )
+  theme_minimal(base_size = 14)
 
-##### Expanded slicing — for clear contexts (GOAL vs ASSIST vs NoGoalButAssistPossible etc.)
+# --------------
+# SECTION E: Expanded No-Role (non-facet)
+# --------------
 
-##### Faceted Plot (Role x Context)
-
-# Sample sizes:
-sample_sizes_exp <- Touches_PlayerHyp_summary_role_expanded_avg %>%
-  group_by(TouchRole, ExpandedContext_Label) %>%
-  summarise(n = n(), .groups = "drop")
-
-# Merge:
-Touches_PlayerHyp_summary_role_expanded_avg_plot <- Touches_PlayerHyp_summary_role_expanded_avg %>%
-  left_join(sample_sizes_exp, by = c("TouchRole", "ExpandedContext_Label")) %>%
-  mutate(label = paste0(ExpandedContext_Label, "\n(n=", n, ")"))
-
-# All pairs:
-all_levels_exp <- unique(Touches_PlayerHyp_summary_role_expanded_avg_plot$label)
-comparisons_exp <- combn(all_levels_exp, 2, simplify = FALSE)
-
-# Faceted Plot:
-Plot_Expanded_Facet <- ggplot(Touches_PlayerHyp_summary_role_expanded_avg_plot, aes(x = label, y = Avg_TouchRate)) +
-  geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
-  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
-  facet_wrap(~ TouchRole) +
-  labs(
-    title = "Prosocial Touch Rates — Expanded Context × Role",
-    x = "Context",
-    y = "Avg Touch Rate (touches per min)"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_blank()
-  )
-
-##### Non-facet Plot (no role)
 Touches_PlayerHyp_summary_expanded_noRole <- Touches_PlayerHyp_summary_role_expanded_avg %>%
   group_by(PlayerID, ExpandedContext_Label) %>%
-  summarise(
-    Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
+  summarise(Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE), .groups = "drop") %>%
   group_by(ExpandedContext_Label) %>%
   mutate(n = n()) %>%
   ungroup() %>%
   mutate(label = paste0(ExpandedContext_Label, "\n(n=", n, ")"))
 
-# All pairs:
-all_levels_exp_noRole <- unique(Touches_PlayerHyp_summary_expanded_noRole$label)
-comparisons_exp_noRole <- combn(all_levels_exp_noRole, 2, simplify = FALSE)
-
-# Non-facet Plot:
-Plot_Expanded_NoRole <- ggplot(Touches_PlayerHyp_summary_expanded_noRole, aes(x = label, y = Avg_TouchRate)) +
-  geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
-  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
-  geom_signif(comparisons = comparisons_exp_noRole, map_signif_level = TRUE, step_increase = 0.1) +
-  labs(
-    title = "Prosocial Touch Rates — Expanded Context (no role)",
-    x = "Context",
-    y = "Avg Touch Rate (touches per min)"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_blank()
-  )
-
-##### Kruskal and pairwise (no role)
 kruskal_test_exp_noRole <- kruskal.test(Avg_TouchRate ~ ExpandedContext_Label, data = Touches_PlayerHyp_summary_expanded_noRole)
 print(kruskal_test_exp_noRole)
 
@@ -389,104 +396,22 @@ pairwise_exp_noRole <- pairwise.wilcox.test(
   p.adjust.method = "bonferroni"
 )
 print(pairwise_exp_noRole)
-##### Expanded slicing — for clear contexts (GOAL vs ASSIST vs NoGoalButAssistPossible etc.)
 
-##### Expanded slicing — PREP BOTH 4-group and 3-group
+Plot_Expanded_NoRole <- ggplot(Touches_PlayerHyp_summary_expanded_noRole, aes(x = label, y = Avg_TouchRate)) +
+  geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
+  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
+  labs(
+    title = "Prosocial Touch Rates — Expanded Context (no role)",
+    x = "Context",
+    y = "Avg Touch Rate (touches per min)"
+  ) +
+  theme_minimal(base_size = 14)
 
-# Step E1a: ExpandedContext_Label — 4-group version
-Touches_PlayerHyp_Expanded_v2_4group <- player_match_with_goals %>%
-  inner_join(Touches_PlayerHyp, by = c("SeasonMatchNumber", "TeamID")) %>%
-  filter(str_detect(PlayersInvolved, paste0("\\b", PlayerID, "\\b"))) %>%
-  mutate(
-    TouchRole = case_when(
-      Reciprocal %in% c("Y", "G") ~ "Both",
-      ToucherNumber == PlayerID ~ "Toucher",
-      ToucheeNumber == PlayerID ~ "Touchee",
-      TRUE ~ NA_character_
-    )
-  ) %>%
-  filter(!is.na(TouchRole)) %>%
-  mutate(
-    ExpandedContext_Label = case_when(
-      # pure NO goal or assist — "non-contributor"
-      (ScoredOrAssisted == 0) ~ "NoGoalOrAssist",
-      
-      # scored at least one goal — before first goal
-      (Scored == 1 & Assisted == 0 & TimeInSeconds <= FirstScoringTime) ~ "BeforeGoal_OnlyGoal",
-      
-      # assisted but did not score — before first assist
-      (Scored == 0 & Assisted == 1 & TimeInSeconds <= FirstAssistingTime) ~ "BeforeAssist_OnlyAssist",
-      
-      # scored AND assisted — before first goal
-      (Scored == 1 & Assisted == 1 & TimeInSeconds <= FirstScoringTime) ~ "BeforeGoal_ScoredAndAssist",
-      
-      # assisted AND scored — before first assist
-      (Scored == 1 & Assisted == 1 & TimeInSeconds <= FirstAssistingTime) ~ "BeforeAssist_ScoredAndAssist",
-      
-      # matches where player did not score — but could assist
-      (Scored == 0 & Assisted == 1 & TimeInSeconds > FirstAssistingTime) ~ "NoGoalButAssistPossible",
-      
-      # catch-all (anything else — don't analyze here)
-      TRUE ~ NA_character_
-    )
-  ) %>%
-  filter(!is.na(ExpandedContext_Label))
+# --------------
+# SECTION F: Clean 3-Group Plot
+# --------------
 
-
-# Step E1b: ExpandedContext_Label — 3-group version
-Touches_PlayerHyp_Expanded_v2_3group <- player_match_with_goals %>%
-  inner_join(Touches_PlayerHyp, by = c("SeasonMatchNumber", "TeamID")) %>%
-  filter(str_detect(PlayersInvolved, paste0("\\b", PlayerID, "\\b"))) %>%
-  mutate(
-    TouchRole = case_when(
-      Reciprocal %in% c("Y", "G") ~ "Both",
-      ToucherNumber == PlayerID ~ "Toucher",
-      ToucheeNumber == PlayerID ~ "Touchee",
-      TRUE ~ NA_character_
-    )
-  ) %>%
-  filter(!is.na(TouchRole)) %>%
-  mutate(
-    ExpandedContext_Label = case_when(
-      (ScoredOrAssisted == 0) ~ "NoGoalOrAssist",
-      (ScoredOrAssisted == 1 & TimeInSeconds <= FirstGoalOrAssistTime) ~ "BeforeAnyContribution",
-      (ScoredOrAssisted == 1 & TimeInSeconds > FirstGoalOrAssistTime) ~ "AfterFirstContribution",
-      TRUE ~ NA_character_
-    )
-  ) %>%
-  filter(!is.na(ExpandedContext_Label))
-
-
-
-# Step E2: Summary per PlayerID + TouchRole + ExpandedContext_Label
-
-Touches_PlayerHyp_summary_role_expanded <- Touches_PlayerHyp_Expanded_v2 %>%
-  group_by(PlayerID, TouchRole, ExpandedContext_Label, SeasonMatchNumber) %>%
-  summarise(
-    Touches = n(),
-    MatchSecondsPlayed = first(MatchSecondsPlayed),
-    TouchRate = Touches / (MatchSecondsPlayed / 60),
-    .groups = "drop"
-  )
-
-# Step E3: Aggregate to player avg
-
-Touches_PlayerHyp_summary_role_expanded_avg <- Touches_PlayerHyp_summary_role_expanded %>%
-  group_by(PlayerID, TouchRole, ExpandedContext_Label) %>%
-  summarise(
-    Avg_TouchRate = mean(TouchRate, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-##### Clean 3-group (BeforeAnyContribution vs After vs NoContribution)
-
-# Step C1: Collapse ExpandedContext_Label to Clean3Group
-Touches_PlayerHyp_summary_expanded_noRole_3group <- Touches_PlayerHyp_summary_role_expanded_avg %>%
-  group_by(PlayerID, ExpandedContext_Label) %>%
-  summarise(
-    Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
+Touches_PlayerHyp_summary_expanded_noRole_4group <- Touches_PlayerHyp_summary_role_expanded_avg_4group %>%
   mutate(
     CleanContext_Label = case_when(
       ExpandedContext_Label == "BeforeAnyContribution" ~ "BeforeAnyContribution",
@@ -497,112 +422,12 @@ Touches_PlayerHyp_summary_expanded_noRole_3group <- Touches_PlayerHyp_summary_ro
   ) %>%
   filter(!is.na(CleanContext_Label)) %>%
   group_by(PlayerID, CleanContext_Label) %>%
-  summarise(
-    Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
+  summarise(Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE), .groups = "drop") %>%
   group_by(CleanContext_Label) %>%
   mutate(n = n()) %>%
   ungroup() %>%
   mutate(label = paste0(CleanContext_Label, "\n(n=", n, ")"))
 
-# All pairs:
-all_levels_clean3 <- unique(Touches_PlayerHyp_summary_expanded_noRole_3group$label)
-comparisons_clean3 <- combn(all_levels_clean3, 2, simplify = FALSE)
-
-
-# Verify how many PLAYER-MATCH rows per context (diagnostic only)
-
-Touches_PlayerHyp_summary_role_expanded %>%
-  group_by(ExpandedContext_Label) %>%
-  summarise(n_matches = n_distinct(paste(PlayerID, SeasonMatchNumber))) %>%
-  arrange(desc(n_matches)) %>%
-  print(n = Inf)
-
-
-##### Faceted Plot (Role x Context)
-
-# Sample sizes:
-sample_sizes_exp <- Touches_PlayerHyp_summary_role_expanded_avg %>%
-  group_by(TouchRole, ExpandedContext_Label) %>%
-  summarise(n = n(), .groups = "drop")
-
-# Merge:
-Touches_PlayerHyp_summary_role_expanded_avg_plot <- Touches_PlayerHyp_summary_role_expanded_avg %>%
-  left_join(sample_sizes_exp, by = c("TouchRole", "ExpandedContext_Label")) %>%
-  mutate(label = paste0(ExpandedContext_Label, "\n(n=", n, ")"))
-
-# All pairs:
-all_levels_exp <- unique(Touches_PlayerHyp_summary_role_expanded_avg_plot$label)
-comparisons_exp <- combn(all_levels_exp, 2, simplify = FALSE)
-
-# Faceted Plot:
-Plot_Expanded_Facet <- ggplot(Touches_PlayerHyp_summary_role_expanded_avg_plot, aes(x = label, y = Avg_TouchRate)) +
-  geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
-  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
-  facet_wrap(~ TouchRole) +
-  labs(
-    title = "Prosocial Touch Rates — Expanded Context × Role",
-    x = "Context",
-    y = "Avg Touch Rate (touches per min)"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_blank()
-  )
-
-##### Clean 3-group (BeforeAnyContribution vs After vs NoContribution)
-
-# Step C1: Collapse ExpandedContext_Label to Clean3Group
-Touches_PlayerHyp_summary_expanded_noRole_3group <- Touches_PlayerHyp_summary_role_expanded_avg %>%
-  group_by(PlayerID, ExpandedContext_Label) %>%
-  summarise(
-    Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  mutate(
-    CleanContext_Label = case_when(
-      ExpandedContext_Label == "BeforeAnyContribution" ~ "BeforeAnyContribution",
-      ExpandedContext_Label == "AfterFirstContribution" ~ "AfterFirstContribution",
-      ExpandedContext_Label == "NoGoalOrAssist" ~ "NoGoalOrAssist",
-      TRUE ~ NA_character_
-    )
-  ) %>%
-  filter(!is.na(CleanContext_Label)) %>%
-  group_by(PlayerID, CleanContext_Label) %>%
-  summarise(
-    Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  group_by(CleanContext_Label) %>%
-  mutate(n = n()) %>%
-  ungroup() %>%
-  mutate(label = paste0(CleanContext_Label, "\n(n=", n, ")"))
-
-# All pairs:
-all_levels_clean3 <- unique(Touches_PlayerHyp_summary_expanded_noRole_3group$label)
-comparisons_clean3 <- combn(all_levels_clean3, 2, simplify = FALSE)
-
-# Clean 3-group Plot:
-Plot_Clean3 <- ggplot(Touches_PlayerHyp_summary_expanded_noRole_3group, aes(x = label, y = Avg_TouchRate)) +
-  geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
-  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
-  geom_signif(comparisons = comparisons_clean3, map_signif_level = TRUE, step_increase = 0.1) +
-  labs(
-    title = "Prosocial Touch Rates — Clean 3-Group Context (Before/After/NoContribution)",
-    x = "Context",
-    y = "Avg Touch Rate (touches per min)"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_blank()
-  )
-
-##### Kruskal + pairwise for clean 3-group
 kruskal_test_clean3 <- kruskal.test(Avg_TouchRate ~ CleanContext_Label, data = Touches_PlayerHyp_summary_expanded_noRole_3group)
 print(kruskal_test_clean3)
 
@@ -613,55 +438,21 @@ pairwise_clean3 <- pairwise.wilcox.test(
 )
 print(pairwise_clean3)
 
-
-##### Non-facet Plot (no role)
-Touches_PlayerHyp_summary_expanded_noRole <- Touches_PlayerHyp_summary_role_expanded_avg %>%
-  group_by(PlayerID, ExpandedContext_Label) %>%
-  summarise(
-    Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
-  group_by(ExpandedContext_Label) %>%
-  mutate(n = n()) %>%
-  ungroup() %>%
-  mutate(label = paste0(ExpandedContext_Label, "\n(n=", n, ")"))
-
-# All pairs:
-all_levels_exp_noRole <- unique(Touches_PlayerHyp_summary_expanded_noRole$label)
-comparisons_exp_noRole <- combn(all_levels_exp_noRole, 2, simplify = FALSE)
-
-# Non-facet Plot:
-Plot_Expanded_NoRole <- ggplot(Touches_PlayerHyp_summary_expanded_noRole, aes(x = label, y = Avg_TouchRate)) +
+Plot_Clean3 <- ggplot(Touches_PlayerHyp_summary_expanded_noRole_3group, aes(x = label, y = Avg_TouchRate)) +
   geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
   geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
-  geom_signif(comparisons = comparisons_exp_noRole, map_signif_level = TRUE, step_increase = 0.1) +
   labs(
-    title = "Prosocial Touch Rates — Expanded Context (no role)",
+    title = "Prosocial Touch Rates — Clean 3-Group Context",
     x = "Context",
     y = "Avg Touch Rate (touches per min)"
   ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_blank()
-  )
+  theme_minimal(base_size = 14)
 
-##### Kruskal and pairwise (no role)
-kruskal_test_exp_noRole <- kruskal.test(Avg_TouchRate ~ ExpandedContext_Label, data = Touches_PlayerHyp_summary_expanded_noRole)
-print(kruskal_test_exp_noRole)
+# --------------
+# SECTION G: Clean 4-Group Plot
+# --------------
 
-pairwise_exp_noRole <- pairwise.wilcox.test(
-  Touches_PlayerHyp_summary_expanded_noRole$Avg_TouchRate,
-  Touches_PlayerHyp_summary_expanded_noRole$ExpandedContext_Label,
-  p.adjust.method = "bonferroni"
-)
-print(pairwise_exp_noRole)
-
-##### Clean 4-group (collapsed assist cases)
-
-# Step C1: Collapse ExpandedContext to 4 categories
-Touches_PlayerHyp_summary_expanded_noRole_4group <- Touches_PlayerHyp_summary_expanded_noRole %>%
+Touches_PlayerHyp_summary_expanded_noRole_4group <- Touches_PlayerHyp_summary_role_expanded_avg_4group %>%
   mutate(
     CleanContext_Label = case_when(
       grepl("^BeforeGoal", ExpandedContext_Label) ~ "BeforeGoal",
@@ -673,37 +464,12 @@ Touches_PlayerHyp_summary_expanded_noRole_4group <- Touches_PlayerHyp_summary_ex
   ) %>%
   filter(!is.na(CleanContext_Label)) %>%
   group_by(PlayerID, CleanContext_Label) %>%
-  summarise(
-    Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE),
-    .groups = "drop"
-  ) %>%
+  summarise(Avg_TouchRate = mean(Avg_TouchRate, na.rm = TRUE), .groups = "drop") %>%
   group_by(CleanContext_Label) %>%
   mutate(n = n()) %>%
   ungroup() %>%
   mutate(label = paste0(CleanContext_Label, "\n(n=", n, ")"))
 
-# All pairs:
-all_levels_clean <- unique(Touches_PlayerHyp_summary_expanded_noRole_4group$label)
-comparisons_clean <- combn(all_levels_clean, 2, simplify = FALSE)
-
-# Clean 4-group Plot:
-Plot_Clean4 <- ggplot(Touches_PlayerHyp_summary_expanded_noRole_4group, aes(x = label, y = Avg_TouchRate)) +
-  geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
-  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
-  geom_signif(comparisons = comparisons_clean, map_signif_level = TRUE, step_increase = 0.1) +
-  labs(
-    title = "Prosocial Touch Rates — Clean 4-Group Context",
-    x = "Context",
-    y = "Avg Touch Rate (touches per min)"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold", hjust = 0.5),
-    axis.text.x = element_text(angle = 45, hjust = 1),
-    panel.grid.major.x = element_blank()
-  )
-
-##### Kruskal + pairwise for clean 4-group
 kruskal_test_clean4 <- kruskal.test(Avg_TouchRate ~ CleanContext_Label, data = Touches_PlayerHyp_summary_expanded_noRole_4group)
 print(kruskal_test_clean4)
 
@@ -713,4 +479,14 @@ pairwise_clean4 <- pairwise.wilcox.test(
   p.adjust.method = "bonferroni"
 )
 print(pairwise_clean4)
+
+Plot_Clean4 <- ggplot(Touches_PlayerHyp_summary_expanded_noRole_4group, aes(x = label, y = Avg_TouchRate)) +
+  geom_boxplot(outlier.shape = NA, fill = "white", color = "black") +
+  geom_jitter(width = 0.2, size = 2, alpha = 0.6) +
+  labs(
+    title = "Prosocial Touch Rates — Clean 4-Group Context",
+    x = "Context",
+    y = "Avg Touch Rate (touches per min)"
+  ) +
+  theme_minimal(base_size = 14)
 
