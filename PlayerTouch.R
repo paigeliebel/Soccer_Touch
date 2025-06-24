@@ -74,3 +74,26 @@ goals_exploded <- Matches_final %>%
   ) %>%
   filter(Scorer != "OG") %>%
   select(SeasonMatchNumber, TeamID, GoalCount, Scorer, Assistor, TotalSecondsElapsed)
+
+
+bad_strings <- Matches_final %>%
+  mutate(
+    GoalsInMatchFor = str_split(GoalsInMatchFor, ",\\s*")
+  ) %>%
+  unnest(GoalsInMatchFor) %>%
+  mutate(
+    GoalsInMatchFor = str_trim(GoalsInMatchFor),
+    StringLength = nchar(GoalsInMatchFor),
+    
+    # Break string into visible parts — even if too short
+    Scorer   = str_sub(GoalsInMatchFor, 1, 2),
+    Assistor = str_sub(GoalsInMatchFor, 3, 4),
+    Half     = str_sub(GoalsInMatchFor, 5, 5),
+    Minute   = str_sub(GoalsInMatchFor, 6, 8),
+    Second   = str_sub(GoalsInMatchFor, 9, 10)
+  ) %>%
+  filter(!GoalsInMatchFor %in% c("X", "XX"), StringLength != 10) %>%
+  select(SeasonMatchNumber, GoalsInMatchFor, StringLength,
+         Scorer, Assistor, Half, Minute, Second)
+
+bad_strings %>% count(StringLength)
