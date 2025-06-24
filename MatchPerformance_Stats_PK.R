@@ -345,6 +345,15 @@ match_player_entries <- match_player_entries %>%
     by = "SeasonMatchNumber"
   )
 
+match_player_entries <- match_player_entries %>%
+  mutate(
+    SubInTime = case_when(
+      WasPlayerSubbedIn == "N" ~ 0,
+      WasPlayerSubbedIn == "Y" & SubbedInHalf == "1" ~ SubbedInMinute * 60,
+      WasPlayerSubbedIn == "Y" & SubbedInHalf == "2" ~ (FirstHalfSeconds + ((SubbedInMinute - 45) * 60)),
+      TRUE ~ NA_real_
+    )
+  )
 
 #Now I have seconds played. Add that up for each player over the season.
 player_season_totals <- match_player_entries %>%
