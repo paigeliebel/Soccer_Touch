@@ -75,7 +75,7 @@ goals_exploded <- Matches_final %>%
   filter(Scorer != "OG") %>%
   select(SeasonMatchNumber, TeamID, GoalCount, Scorer, Assistor, TotalSecondsElapsed)
 
-
+# Checks for any errors in the Matches_final GoalsInMatchFor section
 bad_strings <- Matches_final %>%
   mutate(
     GoalsInMatchFor = str_split(GoalsInMatchFor, ",\\s*")
