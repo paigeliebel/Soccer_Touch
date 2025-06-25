@@ -128,6 +128,11 @@ Touches_PlayerHyp <- Touches_final %>%
     )
   )
 
+# EXPAND PlayersInvolved: each player gets touch involvement credit
+Touches_PlayerHyp <- Touches_PlayerHyp %>%
+  separate_rows(PlayersInvolved, sep = ",\\s*") %>%
+  mutate(Player = PlayersInvolved)
+
 # Plot: Histogram of touches by match time in 1-min bins
 # Doesn't show much because games last longer than others
 Histogram_TouchesTime <- ggplot(Touches_PlayerHyp, aes(x = TimeInSeconds / 60)) +  # convert seconds to minutes
@@ -242,3 +247,118 @@ loess_percenthalf_both <- ggplot(Touches_PlayerHyp_binned_half, aes(x = PercentH
 ##### and the rate of the overall touch rate for the match for the player --> too many confounding variables
 ##### if the player scores, the team is winning. Do we look at them compared to players who don't score? 
 ##### do we look at average touch rate up to the point of their average goal scoring moment? That seems wrong. 
+
+#Final Direction:
+#Hypothesis: "Do players increase their own prosocial touch rate before scoring a goal?"
+#Baseline: their normal match rhythm in matches where they did not score
+#Target: matches where they did score → before their first goal only
+
+### Create binned datasets for player LOESS curves ###
+
+# First: Add scoring info to each touch
+Touches_PlayerHyp <- Touches_PlayerHyp %>%
+  left_join(
+    player_goal_events %>%
+      select(SeasonMatchNumber, TeamID, Player, FirstScoringTime, Scored),
+    by = c("SeasonMatchNumber", "TeamID", "Player")
+  ) %>%
+  mutate(
+    IsBeforeGoal = case_when(
+      Scored == 1 & TimeInSeconds < FirstScoringTime ~ "Pre-Goal",
+      Scored == 0 ~ "Non-Goal Match",
+      TRUE ~ NA_character_
+    )
+  )
+
+# Keep only touches in Pre-Goal or Non-Goal match
+Touches_PlayerHyp_filtered <- Touches_PlayerHyp %>%
+  filter(!is.na(IsBeforeGoal))
+
+# Bin by PercentOfMatch, per Player and Condition
+Touches_PlayerHyp_binned_Player <- Touches_PlayerHyp_filtered %>%
+  mutate(PercentBin = floor(PercentOfMatch / 0.01) * 0.01) %>%
+  group_by(Player, IsBeforeGoal, PercentBin) %>%
+  summarise(
+    TouchCount = n(),
+    .groups = "drop"
+  )
+
+# Aggregate player average per bin
+Player_LOESS_Data <- Touches_PlayerHyp_binned_Player %>%
+  group_by(IsBeforeGoal, PercentBin) %>%
+  summarise(
+    MeanTouchCount = mean(TouchCount),
+    .groups = "drop"
+  )
+
+# Step 8: Plot — smooth player-average curves
+ggplot(Player_LOESS_Data, aes(x = PercentBin, y = MeanTouchCount, color = IsBeforeGoal)) +
+  geom_smooth(method = "loess", se = FALSE, size = 1.6, span = 0.4) +
+  labs(title = "Player-Averaged Prosocial Touch Rate — Pre-Goal vs Non-Goal Matches",
+       x = "% of Match Completion",
+       y = "Avg Touches per Player (per % bin)",
+       color = "Condition") +
+  scale_color_manual(values = c("Pre-Goal" = "red", "Non-Goal Match" = "blue")) +
+  theme_minimal()
+
+# Step 9 — Player-wise normalized curves
+
+# Re-join match length into Touches_PlayerHyp_filtered
+Touches_PlayerHyp_filtered <- Touches_PlayerHyp_filtered %>%
+  left_join(
+    Matches_final %>%
+      mutate(TeamID = str_sub(MatchID, 1, 2),
+             MatchLength_Minutes = floor(as.numeric(MatchLength) / 100),
+             MatchLength_Seconds = as.numeric(MatchLength) %% 100,
+             TotalMatchSeconds = (MatchLength_Minutes * 60) + MatchLength_Seconds) %>%
+      select(SeasonMatchNumber, TeamID, TotalMatchSeconds),
+    by = c("SeasonMatchNumber", "TeamID")
+  ) %>%
+  mutate(
+    MatchMinutes = TotalMatchSeconds / 60,
+    TouchRatePerMin = 1 / MatchMinutes  # this is your calculation
+  )
+
+# Bin + normalize per player
+PlayerCurves <- Touches_PlayerHyp_filtered %>%
+  mutate(PercentBin = floor(PercentOfMatch / 0.01) * 0.01) %>%
+  group_by(Player, IsBeforeGoal, PercentBin) %>%
+  summarise(TouchCount = n(), .groups = "drop") %>%
+  group_by(Player, IsBeforeGoal) %>%
+  mutate(TouchRate = TouchCount / sum(TouchCount)) %>%  # normalize → % of player's touches
+  ungroup()
+
+# Step: compute Player-level average touch rate per match
+
+# Add total match duration
+Touches_PlayerHyp_filtered <- Touches_PlayerHyp_filtered %>%
+  mutate(MatchMinutes = TotalMatchSeconds / 60,
+         TouchRatePerMin = 1 / MatchMinutes)  # 1 touch per min (approximation)
+
+# For each player & match & condition — compute touch rate
+Player_MatchRates <- Touches_PlayerHyp_filtered %>%
+  group_by(Player, SeasonMatchNumber, IsBeforeGoal) %>%
+  summarise(
+    NumTouches = n(),
+    MatchMinutes = first(MatchMinutes),
+    TouchRatePerMin = NumTouches / MatchMinutes,
+    .groups = "drop"
+  )
+
+#Per-player!
+# Average across matches — per player
+Player_AvgRates <- Player_MatchRates %>%
+  group_by(Player, IsBeforeGoal) %>%
+  summarise(
+    Avg_TouchRatePerMin = mean(TouchRatePerMin),
+    .groups = "drop"
+  ) %>%
+  pivot_wider(
+    names_from = IsBeforeGoal,
+    values_from = Avg_TouchRatePerMin
+  ) %>%
+  filter(!is.na(`Pre-Goal`), !is.na(`Non-Goal Match`)) %>%  # only players with BOTH
+  mutate(Diff = `Pre-Goal` - `Non-Goal Match`)
+
+# OR non-parametric
+wilcox.test(Player_AvgRates$`Pre-Goal`, Player_AvgRates$`Non-Goal Match`, paired = TRUE)
