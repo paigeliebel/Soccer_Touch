@@ -18,6 +18,20 @@ source("Data_Management.R")
 source("Core_Hypothesis.R")
 source("MatchPerformance_Stats_PK.R")
 
+
+#############
+# Section A: Prep data
+#############
+
+# Correct TotalMatchSeconds computation
+Matches_final <- Matches_final %>%
+  mutate(
+    TeamID = str_sub(MatchID, 1, 2),
+    FirstHalfSecs = convert_mmss_to_seconds(as.numeric(FirstHalfLength)),
+    SecondHalfSecs = convert_mmss_to_seconds(as.numeric(SecondHalfLength)),
+    TotalMatchSeconds = FirstHalfSecs + SecondHalfSecs
+  )
+
 # Step 1: Match-by-match seconds played
 player_match_seconds <- match_player_entries %>%
   group_by(SeasonMatchNumber, TeamID, Player) %>%
@@ -27,7 +41,7 @@ player_match_seconds <- match_player_entries %>%
   ) %>%
   arrange(SeasonMatchNumber, TeamID, Player)
 
-# Step 2: Players with ≥ match_cutoff matches, only lokoing at players with a large enough data set a piece
+# Step 2: Players with ≥ match_cutoff matches, only looking at players with a large enough data set a piece
 match_cutoff <- 10
 players_with_cutoff_matches <- player_match_seconds %>%
   group_by(TeamID, Player) %>%
@@ -41,9 +55,10 @@ players_with_cutoff_matches <- player_match_seconds %>%
 goals_exploded <- Matches_final %>%
   mutate(
     MatchID = str_pad(MatchID, width = 4, pad = "0"),
-    TeamID  = str_sub(MatchID, 1, 2)
+    TeamID  = str_sub(MatchID, 1, 2),
+    FirstHalfSecs = convert_mmss_to_seconds(as.numeric(FirstHalfLength))
   ) %>%
-  select(SeasonMatchNumber, MatchID, TeamID, GoalsInMatchFor, FirstHalfLength, SecondHalfLength) %>%
+  select(SeasonMatchNumber, MatchID, TeamID, GoalsInMatchFor, FirstHalfLength, SecondHalfLength, FirstHalfSecs) %>%
   filter(!is.na(GoalsInMatchFor) & GoalsInMatchFor != "" & !(GoalsInMatchFor %in% c("X", "XX"))) %>%
   mutate(
     GoalsInMatchFor = str_split(GoalsInMatchFor, ",\\s*")
@@ -65,10 +80,10 @@ goals_exploded <- Matches_final %>%
   ) %>%
   ungroup() %>%
   mutate(
-    TotalSecondsElapsed = if_else(
-      Half == 1,
-      (MinuteShown * 60) + Second,
-      convert_mmss_to_seconds(as.numeric(FirstHalfLength)) + (MinuteShown * 60) + Second
+    TotalSecondsElapsed = case_when(
+      Half == 1 ~ (MinuteShown * 60) + Second,
+      Half == 2 ~ FirstHalfSecs + ((MinuteShown - 45) * 60) + Second,
+      TRUE ~ NA_real_
     )
   ) %>%
   filter(Scorer != "OG") %>%
@@ -101,6 +116,14 @@ player_match_with_goals <- match_player_entries %>%
   mutate(PlayerID = Player) %>%
   mutate(MatchHadGoalOrAssist = if_else(is.na(ScoredOrAssisted), 0, ScoredOrAssisted))
 
+player_match_with_goals <- player_match_with_goals %>%
+  left_join(
+    Matches_final %>%
+      select(SeasonMatchNumber, TeamID, TotalMatchSeconds),
+    by = c("SeasonMatchNumber", "TeamID")
+  ) %>%
+  mutate(PercentGoalTime = FirstScoringTime / TotalMatchSeconds)
+
 # Step 6: Touches preparation
 Exclude_Touch_Player <- c("TA", "CO", "NEG")
 Exclude_Situation_Player <- c("GF", "GA", "SUB")
@@ -128,10 +151,12 @@ Touches_PlayerHyp <- Touches_final %>%
     )
   )
 
-# EXPAND PlayersInvolved: each player gets touch involvement credit
-Touches_PlayerHyp <- Touches_PlayerHyp %>%
-  separate_rows(PlayersInvolved, sep = ",\\s*") %>%
-  mutate(Player = PlayersInvolved)
+
+#############
+# Section B: Look at how touch counts change throughout a match
+#############
+
+# Looking at total touches across the entire season and all teams and players
 
 # Plot: Histogram of touches by match time in 1-min bins
 # Doesn't show much because games last longer than others
@@ -181,16 +206,15 @@ histogram_smoothline <- ggplot(Touches_PlayerHyp_binned, aes(x = PercentBin, y =
 # Half by Half analysis #
 # Step 1: compute percent of half completion — FULL CLEAN VERSION
 # Remove possible old columns — only if they exist!
-Touches_PlayerHyp <- Touches_PlayerHyp %>%
+Touches_PlayerHyp_HalfbyHalf <- Touches_PlayerHyp %>%
   select(-any_of(c(
     "FirstHalfLength", "SecondHalfLength",
     "FirstHalfSeconds", "SecondHalfSeconds",
-    "FirstHalfSecs", "SecondHalfSecs",
-    "TotalMatchSeconds", "TotalMatchSecs"
+    "FirstHalfSecs", "SecondHalfSecs"
   )))
 
 # Now safe join
-Touches_PlayerHyp <- Touches_PlayerHyp %>%
+Touches_PlayerHyp_HalfbyHalf <- Touches_PlayerHyp_HalfbyHalf %>%
   left_join(
     Matches_final %>%
       mutate(
@@ -216,7 +240,7 @@ Touches_PlayerHyp <- Touches_PlayerHyp %>%
 
 
 # Step 2: bin PercentOfHalf into 1% bins
-Touches_PlayerHyp_binned_half <- Touches_PlayerHyp %>%
+Touches_PlayerHyp_binned_half <- Touches_PlayerHyp_HalfbyHalf %>%
   mutate(PercentHalfBin = floor(PercentOfHalf / 0.01) * 0.01) %>%  # bins of 1%
   group_by(HalfLabel, PercentHalfBin) %>%
   summarise(TouchCount = n(), .groups = "drop")
@@ -249,116 +273,23 @@ loess_percenthalf_both <- ggplot(Touches_PlayerHyp_binned_half, aes(x = PercentH
 ##### do we look at average touch rate up to the point of their average goal scoring moment? That seems wrong. 
 
 #Final Direction:
-#Hypothesis: "Do players increase their own prosocial touch rate before scoring a goal?"
-#Baseline: their normal match rhythm in matches where they did not score
-#Target: matches where they did score → before their first goal only
+#Hypothesis: "Do players show an elevated prosocial touch rate in the period before they score (compared to their usual baseline in games when they do not score)?"
+#Baseline: player’s normal rhythm, from Non-Goal matches (per % match completion)
+#Target: player’s behavior before first goal (per % match completion)
 
-### Create binned datasets for player LOESS curves ###
+# EXPAND PlayersInvolved: each player gets touch involvement credit
+# If three players were involved in teh touch, there are three total rows from the original 1
+# If a player is in the playersinvolved (regardless of toucher or touchee), they are credite the touch
+Touches_PlayerHyp_Expanded <- Touches_PlayerHyp %>%
+  separate_rows(PlayersInvolved, sep = ",\\s*") %>%
+  mutate(Player = PlayersInvolved)
 
-# First: Add scoring info to each touch
-Touches_PlayerHyp <- Touches_PlayerHyp %>%
-  left_join(
-    player_goal_events %>%
-      select(SeasonMatchNumber, TeamID, Player, FirstScoringTime, Scored),
-    by = c("SeasonMatchNumber", "TeamID", "Player")
-  ) %>%
-  mutate(
-    IsBeforeGoal = case_when(
-      Scored == 1 & TimeInSeconds < FirstScoringTime ~ "Pre-Goal",
-      Scored == 0 ~ "Non-Goal Match",
-      TRUE ~ NA_character_
-    )
-  )
+# Build scoring matches dataframe
+scoring_matches <- player_match_with_goals %>%
+  filter(Scored == 1) %>%
+  select(SeasonMatchNumber, TeamID, Player, PercentGoalTime)  # this is your "window" per scoring match
 
-# Keep only touches in Pre-Goal or Non-Goal match
-Touches_PlayerHyp_filtered <- Touches_PlayerHyp %>%
-  filter(!is.na(IsBeforeGoal))
-
-# Bin by PercentOfMatch, per Player and Condition
-Touches_PlayerHyp_binned_Player <- Touches_PlayerHyp_filtered %>%
-  mutate(PercentBin = floor(PercentOfMatch / 0.01) * 0.01) %>%
-  group_by(Player, IsBeforeGoal, PercentBin) %>%
-  summarise(
-    TouchCount = n(),
-    .groups = "drop"
-  )
-
-# Aggregate player average per bin
-Player_LOESS_Data <- Touches_PlayerHyp_binned_Player %>%
-  group_by(IsBeforeGoal, PercentBin) %>%
-  summarise(
-    MeanTouchCount = mean(TouchCount),
-    .groups = "drop"
-  )
-
-# Step 8: Plot — smooth player-average curves
-ggplot(Player_LOESS_Data, aes(x = PercentBin, y = MeanTouchCount, color = IsBeforeGoal)) +
-  geom_smooth(method = "loess", se = FALSE, size = 1.6, span = 0.4) +
-  labs(title = "Player-Averaged Prosocial Touch Rate — Pre-Goal vs Non-Goal Matches",
-       x = "% of Match Completion",
-       y = "Avg Touches per Player (per % bin)",
-       color = "Condition") +
-  scale_color_manual(values = c("Pre-Goal" = "red", "Non-Goal Match" = "blue")) +
-  theme_minimal()
-
-# Step 9 — Player-wise normalized curves
-
-# Re-join match length into Touches_PlayerHyp_filtered
-Touches_PlayerHyp_filtered <- Touches_PlayerHyp_filtered %>%
-  left_join(
-    Matches_final %>%
-      mutate(TeamID = str_sub(MatchID, 1, 2),
-             MatchLength_Minutes = floor(as.numeric(MatchLength) / 100),
-             MatchLength_Seconds = as.numeric(MatchLength) %% 100,
-             TotalMatchSeconds = (MatchLength_Minutes * 60) + MatchLength_Seconds) %>%
-      select(SeasonMatchNumber, TeamID, TotalMatchSeconds),
-    by = c("SeasonMatchNumber", "TeamID")
-  ) %>%
-  mutate(
-    MatchMinutes = TotalMatchSeconds / 60,
-    TouchRatePerMin = 1 / MatchMinutes  # this is your calculation
-  )
-
-# Bin + normalize per player
-PlayerCurves <- Touches_PlayerHyp_filtered %>%
-  mutate(PercentBin = floor(PercentOfMatch / 0.01) * 0.01) %>%
-  group_by(Player, IsBeforeGoal, PercentBin) %>%
-  summarise(TouchCount = n(), .groups = "drop") %>%
-  group_by(Player, IsBeforeGoal) %>%
-  mutate(TouchRate = TouchCount / sum(TouchCount)) %>%  # normalize → % of player's touches
-  ungroup()
-
-# Step: compute Player-level average touch rate per match
-
-# Add total match duration
-Touches_PlayerHyp_filtered <- Touches_PlayerHyp_filtered %>%
-  mutate(MatchMinutes = TotalMatchSeconds / 60,
-         TouchRatePerMin = 1 / MatchMinutes)  # 1 touch per min (approximation)
-
-# For each player & match & condition — compute touch rate
-Player_MatchRates <- Touches_PlayerHyp_filtered %>%
-  group_by(Player, SeasonMatchNumber, IsBeforeGoal) %>%
-  summarise(
-    NumTouches = n(),
-    MatchMinutes = first(MatchMinutes),
-    TouchRatePerMin = NumTouches / MatchMinutes,
-    .groups = "drop"
-  )
-
-#Per-player!
-# Average across matches — per player
-Player_AvgRates <- Player_MatchRates %>%
-  group_by(Player, IsBeforeGoal) %>%
-  summarise(
-    Avg_TouchRatePerMin = mean(TouchRatePerMin),
-    .groups = "drop"
-  ) %>%
-  pivot_wider(
-    names_from = IsBeforeGoal,
-    values_from = Avg_TouchRatePerMin
-  ) %>%
-  filter(!is.na(`Pre-Goal`), !is.na(`Non-Goal Match`)) %>%  # only players with BOTH
-  mutate(Diff = `Pre-Goal` - `Non-Goal Match`)
-
-# OR non-parametric
-wilcox.test(Player_AvgRates$`Pre-Goal`, Player_AvgRates$`Non-Goal Match`, paired = TRUE)
+# need to determine what percent of the window the player played
+# can't look at 0-55% window of baseline and compare to a player subbed in at 50%. Of course there would be fewer touched (would need to compare 50-55%)
+# I guess we can create an overall baseline first. just create a scatter plot for each player that tracks when they usually touch in non-scoring matches
+# then compare to this baseline 
