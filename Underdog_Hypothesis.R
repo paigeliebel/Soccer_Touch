@@ -1,6 +1,41 @@
 # Underdog Hypothesis
 # For more information on these data frames please look at the README.md file
 
+################################################################################
+# MODELING STRATEGY FOR UNDERDOG HYPOTHESIS | GAMs, Penalization, and Surfaces #
+################################################################################
+
+# OBJECTIVE:
+# To test whether the impact of prosocial touch on Goal Differential depends 
+# on a team's underdog status (Spread = Opponent Rank - Team Rank).
+# 
+# Specifically, we examined whether there is a *synergistic interaction* between 
+# touch frequency and underdog status, rather than just additive effects.
+
+# MODELING APPROACH:
+# We used Generalized Additive Models (GAMs) with tensor product smooths 
+# to allow for non-linear interactions between:
+#     (1) Spread (ranking difference) and 
+#     (2) ScaledTouch (how touchy the team was compared to their average)
+
+# -------------------------
+# MODEL 1: Penalized GAM
+# -------------------------
+# - Fit using `method = "REML"` to estimate the optimal amount of wiggliness.
+# - Penalization discourages overfitting and results in smoother surfaces.
+# - Formula: GoalDiff ~ s(Spread, ScaledTouch, k = 100, bs = "tp")
+# - Interpretation: Model explained ~23% of deviance with ~2 EDF.
+# - Result: Smooth surface resembled a near-plane, suggesting additive (not interactive) effects.
+
+# -------------------------
+# MODEL 2: Unpenalized GAM
+# -------------------------
+# - Fit with `fx = TRUE`, which **removes penalization** and forces full wiggliness.
+# - Formula: GoalDiff ~ s(Spread, ScaledTouch, k = 40, bs = "tp", fx = TRUE)
+# - Interpretation: Higher edf (~39), more complex surface, deviance explained slightly higher (~29.7%)
+# - However, AIC increased → indicating overfitting likely, and added complexity not justified.
+# - Useful as a diagnostic contrast to visualize flexibility.
+
 library(tidyverse)
 library(data.table)
 library(broom)
@@ -19,7 +54,6 @@ source("Data_Management.R") #Runs and brings in data frames from Data_Management
 source("Core_Hypothesis.R") #Runs and brings in data frames from Core_Hypothesis.R script
 source("InterMatch_Variability_Hypothesis.R") #Runs and brings in data frames from InterMatch_Variability_Hypothesis.R script
 
-#note that this is not complete until we get Simon Data (only 2/3s of it so far)
 #Ensure to use the correct dfs. Touches_final and Matches_final are correct. They only include assigned rater data, no repeat matches
 
 #Check to make sure data frames are loaded:
@@ -27,6 +61,7 @@ source("InterMatch_Variability_Hypothesis.R") #Runs and brings in data frames fr
 if (!exists("Touches_final") | !exists("Touches_scaled") | !exists("Matches_finalID") | !exists("FinalStandings") | !exists("Touches_CoreHyp")) {
   stop("Touches_final, Matches_final, Touhe_CoreHyp or FinalStandings not loaded. Check Data_Management.R and Core_Hypothesis.R.")
 }
+
 
 ############################ Underdog Hypothesis ############################
 
@@ -185,6 +220,13 @@ Underdog_Observed_ANOVA %>%
 #It does say that underdogs are more likely to lose (duh) and that more touch is better (duh)
 #Look at GAM Model to see other stuff, there it creates a a relationship between the three values
 
+# 3D scatter of actual points only
+plot_ly(data = Underdog_Analysis,
+        x = ~Spread, y = ~ScaledTouch, z = ~GoalDiff,
+        type = "scatter3d", mode = "markers",
+        marker = list(size = 3, color = ~GoalDiff,
+                      colorscale = "RdYlGn", showscale = TRUE))
+
 ############################ GAM Model | Underdog Hypothesis ############################
 
 #This is asking: If a team is more/less touchy than usual, and they are underdog/overdog, how does this impact the goal differenetial?
@@ -194,6 +236,13 @@ Underdog_Observed_ANOVA %>%
 # Changing k = 15 creates completely flatens slope
 gam_model <- gam(
   GoalDiff ~ s(Spread, ScaledTouch, k = 100, bs = "tp"),  # increase k for smoother fit
+  method = "REML", #changing penalty 
+  data = Underdog_Analysis
+)
+
+#Forced Wigliness - removed penalities
+gam_model_unpenalized <- gam(
+  GoalDiff ~ s(Spread, ScaledTouch, k = 100, bs = "tp", fx = TRUE),
   data = Underdog_Analysis
 )
 
@@ -248,6 +297,59 @@ plot_ly() %>%
     )
   )
 
+
+## completely not penalized one (allow for overfitting)
+#Forced Wigliness - removed penalities
+gam_model_unpenalized <- gam(
+  GoalDiff ~ s(Spread, ScaledTouch, k = 40, bs = "tp", fx = TRUE),
+  data = Underdog_Analysis
+)
+
+# Step 1: Use same grid
+grid$GoalDiff_unpenalized <- predict(gam_model_unpenalized, newdata = grid)
+
+# Step 2: Convert to matrix for plotly
+z_matrix_unpenalized <- matrix(grid$GoalDiff_unpenalized, 
+                               nrow = length(spread_seq), 
+                               ncol = length(touch_seq))
+
+plot_ly() %>%
+  add_surface(
+    x = ~spread_seq,
+    y = ~touch_seq,
+    z = ~z_matrix_unpenalized,
+    colorscale = list(
+      c(0, "red"),
+      c(1, "green")
+    ),
+    cmin = min(Underdog_Analysis$GoalDiff, na.rm = TRUE),
+    cmax = max(Underdog_Analysis$GoalDiff, na.rm = TRUE),
+    opacity = 0.7,
+    showscale = TRUE,
+    name = "Unpenalized Surface"
+  ) %>%
+  add_markers(
+    data = Underdog_Analysis,
+    x = ~Spread,
+    y = ~ScaledTouch,
+    z = ~GoalDiff,
+    marker = list(
+      size = 3,
+      color = ~GoalDiff,
+      colorscale = list(c(0, "#ff0000"), c(1, "#00ff00")),
+      cmin = min(Underdog_Analysis$GoalDiff, na.rm = TRUE),
+      cmax = max(Underdog_Analysis$GoalDiff, na.rm = TRUE)
+    ),
+    name = "Observed"
+  ) %>%
+  layout(
+    title = "Unpenalized GAM: Spread x Touch Deviation x Goal Differential",
+    scene = list(
+      xaxis = list(title = "Spread"),
+      yaxis = list(title = "Scaled Touch"),
+      zaxis = list(title = "Goal Differential")
+    )
+  )
 
 ############################ GAM Model CATEGORICAL Table Summary (Interpretation of GAM) | Underdog Hypothesis ############################
 
