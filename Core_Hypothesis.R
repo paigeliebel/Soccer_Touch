@@ -65,6 +65,16 @@ TouchFreq_vs_FinalStandings <- ggplot(Team_Touches_Standings, aes(x = Rank, y = 
 
 TouchFreq_vs_FinalStandings_Stats <- cor_result <- cor.test(Team_Touches_Standings$TotalTouches, Team_Touches_Standings$Rank)
 
+#Bar graph of Total Touches per Team over the season
+Touches_per_Team <- ggplot(Team_Touches_Standings, aes(x = reorder(TeamID, -TotalTouches), y = TotalTouches)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Total Touches per Team (Season)",
+    x = "Team",
+    y = "Total Touches"
+  ) +
+  theme_minimal()
+
 ############################ Investigating outliers ############################ 
 
 # Check distribution and identify potential outlier
@@ -84,7 +94,6 @@ outliers <- ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches, label
     y = "Total Touches"
   ) +
   theme_minimal()
-
 
 # Prep: Join team rank for ordering
 Touches_per_game_ranked <- Touches_per_game %>%
@@ -570,4 +579,37 @@ ggplot(Touches_scaled, aes(x = Team, y = ScaledTouch, color = OutlierFlag)) +
   theme_minimal()
 
 
+##################Parametric analysis
 
+shapiro.test(Touches_scaled$TouchCount)         # Raw touches per match
+shapiro.test(Team_Touches_Standings$TotalTouches)  # Total touches per season
+shapiro.test(Touches_scaled$ScaledTouch)
+shapiro.test(Team_touch_variability$MeanTouches)
+shapiro.test(TouchMatch_Comparison$GoalsFor)
+shapiro.test(TouchMatch_Comparison$TouchCount)
+shapiro.test(Team_Touches_Standings$TotalTouches)
+
+
+# Histogram
+ggplot(Touches_scaled, aes(x = TouchCount)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "white") +
+  labs(title = "Distribution of Touch Count", x = "Touch Count", y = "Frequency") +
+  theme_minimal()
+
+# Q-Q Plot
+qqnorm(Touches_scaled$TouchCount)
+qqline(Touches_scaled$TouchCount, col = "red")
+
+mad_val <- mad(Team_Touches_Standings$TotalTouches)
+sd_val <- sd(Team_Touches_Standings$TotalTouches)
+mad_to_sd_ratio <- mad_val / sd_val
+
+library(ggplot2)
+
+ggplot(Team_Touches_Standings, aes(x = TotalTouches)) +
+  geom_density(fill = "lightblue", alpha = 0.5) +
+  geom_vline(aes(xintercept = median(TotalTouches)), color = "blue", linetype = "dashed") +
+  geom_vline(aes(xintercept = median(TotalTouches) + mad(TotalTouches)), color = "red", linetype = "dotted") +
+  geom_vline(aes(xintercept = median(TotalTouches) - mad(TotalTouches)), color = "red", linetype = "dotted") +
+  labs(title = "Density Plot with MAD Bands", x = "Total Touches", y = "Density") +
+  theme_minimal()
