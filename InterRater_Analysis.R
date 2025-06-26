@@ -60,6 +60,162 @@ icc_result <- icc(icc_data[,-1], model = "twoway", type = "agreement", unit = "s
 
 print(icc_result)
 
+############################ Simple Reciprocity Check ############################
+
+# Updated exclusion list
+Exclude_Situation_IT <- c("GF", "GA", "SUB", "IT")
+
+Reciprocal_IR <- Touches_interrater %>%
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation_IT)) %>%
+  mutate(
+    Reciprocity = str_trim(Reciprocal),
+    ReciprocityType = case_when(
+      Reciprocity %in% c("Y", "G") ~ "Reciprocal",
+      Reciprocity == "N" ~ "NonReciprocal",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(ReciprocityType))
+
+#Count how many touches each rater coded as reciprocal vs non-reciprocal 
+Recip_Counts <- Reciprocal_IR %>%
+  group_by(SeasonMatchNumber, Rater, ReciprocityType) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ReciprocityType, values_from = Count, values_fill = 0)
+
+
+#Group by match and rater
+Recip_Counts <- Reciprocal_IR %>%
+  group_by(SeasonMatchNumber, Rater, ReciprocityType) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ReciprocityType, values_from = Count, values_fill = 0)
+
+icc_data_recip <- Recip_Counts %>%
+  select(SeasonMatchNumber, Rater, Reciprocal) %>%
+  pivot_wider(names_from = Rater, values_from = Reciprocal)
+
+icc_result_recip <- icc(icc_data_recip[,-1], model = "twoway", type = "agreement", unit = "single")
+
+print(icc_result_recip)
+
+icc_data_nonrecip <- Recip_Counts %>%
+  select(SeasonMatchNumber, Rater, NonReciprocal) %>%
+  pivot_wider(names_from = Rater, values_from = NonReciprocal)
+
+icc_result_nonrecip <- icc(icc_data_nonrecip[,-1], model = "twoway", type = "agreement", unit = "single")
+
+print(icc_result_nonrecip)
+
+#Make some charts
+
+# Filter for reciprocal touches
+recip_counts_plot <- Reciprocal_IR %>%
+  filter(ReciprocityType == "Reciprocal") %>%
+  group_by(SeasonMatchNumber, Rater) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Plot
+ggplot(recip_counts_plot, aes(x = factor(SeasonMatchNumber), y = Count, fill = Rater)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Reciprocal Touch Count per Match by Rater",
+    x = "Season Match Number",
+    y = "Reciprocal Touch Count"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Filter for non-reciprocal touches
+nonrecip_counts_plot <- Reciprocal_IR %>%
+  filter(ReciprocityType == "NonReciprocal") %>%
+  group_by(SeasonMatchNumber, Rater) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Plot
+ggplot(nonrecip_counts_plot, aes(x = factor(SeasonMatchNumber), y = Count, fill = Rater)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Non-Reciprocal Touch Count per Match by Rater",
+    x = "Season Match Number",
+    y = "Non-Reciprocal Touch Count"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+##########Global
+# Total: Keep everything except TA, CO, NEG (but DO allow "IT")
+Interrater_Total <- Touches_interrater %>%
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation)) %>%
+  group_by(Rater) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  mutate(TouchType = "Total")
+
+# Recip / NonRecip: Apply stricter filter (exclude IT)
+Interrater_RecipFiltered <- Touches_interrater %>%
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation_IT)) %>%
+  mutate(
+    Reciprocity = str_trim(Reciprocal),
+    TouchType = case_when(
+      Reciprocity %in% c("Y", "G") ~ "Reciprocal",
+      Reciprocity == "N" ~ "NonReciprocal",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(TouchType))
+
+Interrater_Specific <- Interrater_RecipFiltered %>%
+  group_by(Rater, TouchType) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Combine all
+Global_Touch_Summary <- bind_rows(Interrater_Total, Interrater_Specific) %>%
+  mutate(TouchType = factor(TouchType, levels = c("Total", "Reciprocal", "NonReciprocal")))
+
+ggplot(Global_Touch_Summary, aes(x = TouchType, y = Count, fill = Rater)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Global Comparison of Touch Counts by Rater (Filtered Reciprocities Only)",
+    x = "Touch Type",
+    y = "Total Count",
+    fill = "Rater"
+  ) +
+  theme_minimal()
+
+##ICC Table
+
+# Build total count per match/rater
+icc_data_total <- Touches_interrater %>%
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation)) %>%  # NOTE: only GF, GA, SUB excluded (not IT)
+  group_by(SeasonMatchNumber, Rater) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = Rater, values_from = Count)
+
+# Already done earlier:
+icc_result_total <- icc(icc_data_total[,-1], model = "twoway", type = "agreement", unit = "single")
+icc_result_recip <- icc(icc_data_recip[,-1], model = "twoway", type = "agreement", unit = "single")
+icc_result_nonrecip <- icc(icc_data_nonrecip[,-1], model = "twoway", type = "agreement", unit = "single")
+
+# Extract results into a data frame
+icc_summary <- tibble(
+  TouchType = c("Total", "Reciprocal", "NonReciprocal"),
+  ICC = c(icc_result_total$value, icc_result_recip$value, icc_result_nonrecip$value),
+  Lower_CI = c(icc_result_total$lbound, icc_result_recip$lbound, icc_result_nonrecip$lbound),
+  Upper_CI = c(icc_result_total$ubound, icc_result_recip$ubound, icc_result_nonrecip$ubound)
+)
+
+library(knitr)
+library(kableExtra)
+
+icc_summary %>%
+  mutate(across(where(is.numeric), round, 3)) %>%
+  kable(caption = "ICC Values by Touch Type", align = "c") %>%
+  kable_styling(full_width = FALSE)
+
 # ###Pair-wise Difference Per Match | Looks at differences between rater pairs
 # 
 # # Prepare a compact version of your data
