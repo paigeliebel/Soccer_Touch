@@ -11,7 +11,6 @@ library(readr)
 library (dplyr)
 
 source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
-source("Core_Hypothesis.R") #Runs and brings in data frames from Core_Hypothesis.R script
 
 ############################ Complete data summary | No filtering ############################ 
 
@@ -38,6 +37,103 @@ Summary_Table_A <- tibble(
   )
 )
 
+############################ FlowChart | Filtering ############################ 
+
+# Prosocial vs Nonsocial
+
+# Prosocial touches are defined as all haptic rituals recorded excluding: 
+# Tactical Adjustments, Collisions, and Negative Touch
+Exclude_Touch <- c("TA", "CO", "NEG")
+
+#Only Prosocial Touches
+Touches_ProSocial <- Touches_final %>%
+  filter(!(HapticRitual %in% Exclude_Touch))
+
+#Non-social touches table (only those in Exclude_Touch)
+Touches_NonSocial <- Touches_final %>%
+  filter(HapticRitual %in% Exclude_Touch)
+
+# Count n for social and nonsocial:
+social_count <- nrow(Touches_ProSocial)
+nonsocial_count <- nrow(Touches_NonSocial)
+
+cat("Number of Prosocial (Social) Touches:", social_count, "\n")
+cat("Number of NonSocial Touches:", nonsocial_count, "\n")
+
+#Excluding goal for/against, substitutions (starting with prosocial set)
+Exclude_Situation <- c("GF", "GA", "SUB") 
+
+#Only Prosocial Touches
+Touches_CoreData <- Touches_ProSocial %>%
+  filter(!(Situation %in% Exclude_Situation))
+
+#Count for other GF/GA/SUB
+Touches_GoalsSubs <- Touches_ProSocial %>%
+  filter(Situation %in% Exclude_Situation)
+
+# Count n for GF,GA,SUB and Run-of-play:
+coredata_count <- nrow(Touches_CoreData)
+GoalsSubs_count <- nrow(Touches_GoalsSubs)
+
+#Filter out IT and look at Reciprocity
+Exclude_IT <- c("IT")
+Touches_ReciprocalNonRecip <- Touches_CoreData %>%
+  filter(!(Situation %in% Exclude_IT))
+
+Touches_ReciprocalNonRecip <- Touches_ReciprocalNonRecip %>% 
+  mutate(
+    Reciprocity = str_trim(Reciprocal) #cleans up white spaces in case
+  )
+
+#Define Reciprocity
+Touches_ReciprocalNonRecip <- Touches_ReciprocalNonRecip %>%
+  mutate(
+    Reciprocity_Group = case_when(
+      Reciprocity %in% c("Y", "G") ~ "Reciprocal",
+      Reciprocity == "N" ~ "NonReciprocal",
+      TRUE ~ "Other"   # just in case of other values
+    )
+  )
+
+# Reciprocal touches table
+Reciprocal_Touches <- Touches_ReciprocalNonRecip %>%
+  filter(Reciprocity_Group == "Reciprocal")
+
+# Nonreciprocal touches table
+NonReciprocal_Touches <- Touches_ReciprocalNonRecip %>%
+  filter(Reciprocity_Group == "NonReciprocal")
+
+#Look at IT touches:
+# Keep only IT touches
+Touches_IT <- Touches_CoreData %>%
+  filter(Situation %in% "IT") %>%   # keep only IT
+  mutate(
+    Reciprocity = str_trim(Reciprocal) # clean white spaces
+  ) %>%
+  mutate(
+    Reciprocity_Group = case_when(
+      Reciprocity %in% c("Y", "G") ~ "Reciprocal",
+      Reciprocity == "N" ~ "NonReciprocal",
+      TRUE ~ "Other"
+    )
+  )
+
+# Reciprocal touches within IT
+Reciprocal_IT_Touches <- Touches_IT %>%
+  filter(Reciprocity_Group == "Reciprocal")
+
+# Nonreciprocal touches within IT
+NonReciprocal_IT_Touches <- Touches_IT %>%
+  filter(Reciprocity_Group == "NonReciprocal")
+
+# Counts
+reciprocal_count <- nrow(Reciprocal_IT_Touches)
+nonreciprocal_count <- nrow(NonReciprocal_IT_Touches)
+
+cat("Number of Reciprocal IT touches:", reciprocal_count, "\n")
+cat("Number of Nonreciprocal IT touches:", nonreciprocal_count, "\n")
+
+###############################################################
 Matches_Summary <- Matches_Summary %>%
   mutate(TeamName = case_when(
     TeamName %in% c("Racing Louisville", "Racing louisville FC", "Louisville Racing") ~ "Racing Louisville FC",
@@ -79,14 +175,5 @@ Filtered_TeamMatchCounts <- TeamMatchCounts %>%
   left_join(Filtered_Touches_by_team, 
             by = c("TeamID" = "Team"))
 
-Summary_Table_B <- tibble(
-  Variable = c("Total_Touch_Instance_count", "Filtered_Touch_Instance_count", "Total_Match_Count", "Total_Teams", "Total_Matches_perTeam"),
-  Value = c(
-    Total_Touch_Instance_count,
-    Filtered_Touch_Instance_count,
-    Total_Match_Count,
-    Total_Teams,
-    Total_Matches_perTeam
-  )
-)
+
 

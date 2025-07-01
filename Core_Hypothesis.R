@@ -29,13 +29,11 @@ if (!exists("Touches_final") | !exists("Matches_final") | !exists("FinalStanding
 
 Exclude_Touch <- c("TA", "CO", "NEG")
 Exclude_Situation <- c("GF", "GA", "SUB") 
-#Exclude_Visibility <- c("P")
 
 #Creates data set for core hypothesis analysis
 Touches_CoreHyp <- Touches_final %>%
   filter(!(HapticRitual %in% Exclude_Touch)) %>%
-  filter(!(Situation %in% Exclude_Situation)) #%>% 
-  #filter(!(Visibility %in% Exclude_Visibility))
+  filter(!(Situation %in% Exclude_Situation))
 
 #Count of frequency of touches per team
 Touches_by_team <- Touches_CoreHyp %>%
