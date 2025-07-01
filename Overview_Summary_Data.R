@@ -420,395 +420,54 @@ touches_permatch_scaled_plot <- ggplot(Touches_per_match_scaled_ranked, aes(x = 
 
 # Check distribution and identify potential outlier
 
-# Prep: Join team rank for ordering
-Touches_per_game_ranked <- Touches_per_match %>%
-  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
-  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
-  filter(!is.na(Rank))
+#outlier is 1.5 IQR
 
-
-
-############################ Within-Team Variability in Touch Frequency vs Ranking ############################ 
-
-# Join variability data to final standings
-Variability_vs_Rank <- Team_touch_variability %>%
-  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
-  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
-  filter(!is.na(Rank))
-
-# Plot SDTouches vs Rank
-Within_Variability_vs_Rank <- ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTouches)) +
-  geom_point(size = 3) +
-  geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1) +
-  scale_x_reverse(breaks = 1:14) +
-  labs(
-    title = "Team Variability in Touch vs Final Rank",
-    x = "Final Season Rank",
-    y = "Touch Frequency Variability (SD)"
-  ) +
-  theme_minimal()
-
-Within_Variability_vs_Rank_Stats <- cor.test(Variability_vs_Rank$SDTouches, Variability_vs_Rank$Rank)
-
-#In regards to within-tea variability including MAD normalization
-
-Team_scaled_variability <- Touches_scaled %>%
+Touches_per_match_outliers <- Touches_per_match %>%
   group_by(Team) %>%
-  summarise(
-    SD_ScaledTouch = sd(ScaledTouch),
-    NumGames = n(),
-    .groups = "drop"
-  )
+  mutate(
+    Q1 = quantile(TouchCount, 0.25, na.rm = TRUE),
+    Q3 = quantile(TouchCount, 0.75, na.rm = TRUE),
+    IQR_val = Q3 - Q1,
+    lower_fence = Q1 - 1.5 * IQR_val,
+    upper_fence = Q3 + 1.5 * IQR_val,
+    OutlierStatus = if_else(TouchCount < lower_fence | TouchCount > upper_fence, "Outlier", "Normal")
+  ) %>%
+  ungroup()
 
-Team_scaled_variability_ranked <- Team_scaled_variability %>%
-  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
-  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
-  filter(!is.na(Rank))
+# Extract TeamID from MatchID in Matches_final
+Matches_for_outliers <- Matches_final %>%
+  mutate(Team = str_sub(MatchID, 1, 2))  # first two characters as TeamID
 
-Team_scaled_variability_ranked_plot <- ggplot(Team_scaled_variability_ranked, aes(x = Rank, y = SD_ScaledTouch)) +
-  geom_point(size = 3) +
-  geom_smooth(method = "lm", se = FALSE, color = "red", linewidth = 1) +
-  scale_x_reverse(breaks = 1:14) +
-  labs(
-    title = "Team Variability (SD of Scaled Touch) vs Final Rank",
-    x = "Final Season Rank",
-    y = "SD of Scaled Touch (MAD units)"
-  ) +
-  theme_minimal()
-
-ScaledTouch_Variability_vs_Rank_Stats <- cor.test(
-  Team_scaled_variability_ranked$SD_ScaledTouch,
-  Team_scaled_variability_ranked$Rank
-)
-
-############################ Investigating data after removing outliers ############################ 
-
-Touches_filteredoutliers <- Touches_scaled %>%
-  filter(abs(ScaledTouch) <= 2)
-
-Touches_outliers_removed <- Touches_scaled %>%
-  filter(abs(ScaledTouch) > 2)
-
-#Yes, the filtering included both high and low outliers — anything more than 2 MAD units away from the team median, in either direction (too high or too low), was removed.
-library(patchwork)
-
-# Full data
-p1 <- ggplot(Touches_scaled, aes(x = TouchCount)) +
-  geom_histogram(binwidth = 5, fill = "steelblue", color = "white") +
-  labs(
-    title = "Touches per Game (All Games)",
-    x = "Touches per Game",
-    y = "Number of Matches"
-  ) +
-  theme_minimal()
-
-# Filtered data
-p2 <- ggplot(Touches_filteredoutliers, aes(x = TouchCount)) +
-  geom_histogram(binwidth = 5, fill = "darkgreen", color = "white") +
-  labs(
-    title = "Touches per Game (Outliers Removed)",
-    x = "Touches per Game",
-    y = "Number of Matches"
-  ) +
-  theme_minimal()
-
-# Display side-by-side
-p1 + p2
-
-############################ Removal of Outliers | Core Hypothesis ############################ 
-
-Touches_filteredoutliers  # contains Team, SeasonMatchNumber, TouchCount
-
-# Get only the core hypothesis touches from the non-outlier matches
-Touches_CoreData_Clean <- Touches_CoreData %>%
-  semi_join(Touches_filteredoutliers, by = c("Team", "SeasonMatchNumber"))
-
-Touches_by_team_clean <- Touches_CoreData_Clean %>%
-  mutate(Team = str_trim(as.character(Team))) %>%
-  count(Team, name = "TotalTouches")
-
-Team_Touches_Standings_clean <- FinalStandings %>%
-  left_join(Touches_by_team_clean, by = c("TeamID" = "Team")) %>%
-  filter(!is.na(TotalTouches))
-
-TouchFreq_vs_FinalStandings_clean <- ggplot(Team_Touches_Standings_clean, aes(x = Rank, y = TotalTouches)) +
-  geom_point(size = 3, color = "darkgreen") +
-  geom_smooth(method = "lm", se = FALSE, color = "darkgreen", linewidth = 1) +
-  scale_x_reverse() +
-  labs(
-    title = "Final Rank vs Touch Frequency (Cleaned, Outliers Removed)",
-    x = "Final Season Rank",
-    y = "Total Touches (No Outlier Matches)"
-  ) +
-  theme_minimal()
-
-TouchFreq_vs_FinalStandings_clean_Stats <- cor.test(
-  Team_Touches_Standings_clean$TotalTouches,
-  Team_Touches_Standings_clean$Rank
-)
-
-original_plot <- ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches)) +
-  geom_point(size = 3, color = "steelblue") +
-  geom_smooth(method = "lm", se = FALSE, color = "steelblue", linewidth = 1) +
-  scale_x_reverse() +
-  labs(
-    title = "Original: Rank vs Touch Frequency (All Matches)",
-    x = "Final Season Rank",
-    y = "Total Touches"
-  ) +
-  theme_minimal()
-
-
-
-original_plot + TouchFreq_vs_FinalStandings_clean
-
-
-############################ Deep Dive Outlier Analysis ############################ 
-
-Matches_foroutliers <- Matches_final %>%
-  mutate(TeamID = substr(as.character(MatchID), 1, 2))
-
-Touches_outliers_removed <- Touches_outliers_removed %>%
-  mutate(OutlierStatus = "Outlier")
-
-Touches_filteredoutliers <- Touches_filteredoutliers %>%
-  mutate(OutlierStatus = "Normal")
-
-# Combine both into one data frame
-TouchMatch_Comparison <- bind_rows(Touches_outliers_removed, Touches_filteredoutliers) %>%
-  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
-  left_join(Matches_foroutliers, by = c("Team" = "TeamID", "SeasonMatchNumber"))
-
-TouchMatch_Comparison <- TouchMatch_Comparison %>%
+# Make sure Team codes are padded the same way
+Touches_per_match_outliers <- Touches_per_match_outliers %>%
   mutate(Team = str_pad(as.character(Team), width = 2, pad = "0"))
 
-TouchMatch_Comparison <- TouchMatch_Comparison %>%
-  mutate(
-    GoalsFor = case_when(
-      GoalsFor %in% c("X", "XX") ~ "0",
-      TRUE ~ GoalsFor
-    ),
-    GoalsFor = as.numeric(GoalsFor)
-  )
+Matches_for_outliers <- Matches_for_outliers %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0"))
 
-# Compute sample size per group
-n_labels <- TouchMatch_Comparison %>%
-  group_by(OutlierStatus) %>%
-  summarise(
-    n = n(),
-    y_pos = max(GoalsFor, na.rm = TRUE) + 0.5  # position just above max value
-  )
+# Now join using SeasonMatchNumber and Team
+Touches_per_match_outliers <- Touches_per_match_outliers %>%
+  left_join(Matches_for_outliers %>% select(SeasonMatchNumber, Team, Outcome, GoalsFor),
+            by = c("SeasonMatchNumber", "Team"))
 
-#goals scored
-ggplot(TouchMatch_Comparison, aes(x = OutlierStatus, y = GoalsFor)) +
-  geom_boxplot(fill = "gray", outlier.shape = NA) +
-  geom_jitter(width = 0.2, alpha = 0.6, color = "darkred") +
-  geom_text(data = n_labels, aes(x = OutlierStatus, y = y_pos, label = paste0("n = ", n)), vjust = 0) +
-  labs(
-    title = "Goals Scored in Outlier vs Normal Matches",
-    x = "Match Type",
-    y = "Goals Scored"
-  ) +
-  theme_minimal()
-
-
-#proportion of wins
-TouchMatch_Comparison %>%
+outcome_summary <- Touches_per_match_outliers %>%
   group_by(OutlierStatus, Outcome) %>%
-  summarise(n = n(), .groups = "drop") %>%
+  summarise(count = n(), .groups = "drop") %>%
   group_by(OutlierStatus) %>%
-  mutate(
-    prop = n / sum(n),
-    label_y = prop + 0.03  # slightly above the bar
-  ) %>%
-  ggplot(aes(x = OutlierStatus, y = prop, fill = Outcome)) +
+  mutate(proportion = count / sum(count))
+
+match_outcomes_outliers <- ggplot(outcome_summary, aes(x = OutlierStatus, y = proportion, fill = Outcome)) +
   geom_col(position = "dodge") +
-  geom_text(aes(label = paste0("n = ", n), y = label_y), 
-            position = position_dodge(width = 0.9), 
-            vjust = 0, size = 3.5) +
+  geom_text(aes(label = count), position = position_dodge(0.9), vjust = -0.25) +
   labs(
-    title = "Match Outcomes in Outlier vs Normal Matches",
+    title = "Match Outcomes by Outlier Status",
     x = "Match Type",
-    y = "Proportion of Matches"
+    y = "Proportion"
   ) +
   theme_minimal()
 
+table_outcomes <- table(Touches_per_match_outliers$OutlierStatus, Touches_per_match_outliers$Outcome)
 
-# New n_labels specifically for Outcome x OutlierStatus
-n_labels_touch <- TouchMatch_Comparison %>%
-  group_by(Outcome, OutlierStatus) %>%
-  summarise(
-    n = n(),
-    y_pos = max(TouchCount, na.rm = TRUE) + 2,
-    .groups = "drop"
-  )
+fisher_res <- fisher.test(table_outcomes)
 
-#TouchCount vs Match Outcome
-ggplot(TouchMatch_Comparison, aes(x = Outcome, y = TouchCount, fill = OutlierStatus)) +
-  geom_boxplot(position = position_dodge(width = 0.75)) +
-  geom_text(data = n_labels_touch,
-            aes(x = Outcome, y = y_pos, label = paste0("n = ", n), group = OutlierStatus),
-            position = position_dodge(width = 0.75),
-            vjust = 0, size = 3.5) +
-  labs(
-    title = "Touch Count by Match Result and Outlier Status",
-    x = "Match Result",
-    y = "Touches",
-    fill = "Match Type"
-  ) +
-  theme_minimal()
-
-
-#do outlier matches have significantly higher goals? 
-t.test(GoalsFor ~ OutlierStatus, data = TouchMatch_Comparison)
-
-#  Outlier matches (those with abnormally high/low touch rates) are associated with higher average goals scored than normal matches — by ~0.55 goals on average.
-
-# This supports the idea that "touchy" or "chaotic" matches may coincide with more offensive action (more goals).
-wilcox.test(GoalsFor ~ OutlierStatus, data = TouchMatch_Comparison)
-
-#There is a statistically significant difference in the distribution of goals scored between outlier and normal matches (p = 0.0175).
-#This confirms the earlier t-test finding — but with fewer assumptions (no need for normality or equal variances).
-
-#statistically more likely to have wins?
-# Create a contingency table of outcomes by outlier status
-table_outcomes <- TouchMatch_Comparison %>%
-  count(OutlierStatus, Outcome) %>%
-  pivot_wider(names_from = Outcome, values_from = n, values_fill = 0) %>%
-  column_to_rownames("OutlierStatus") %>%
-  as.matrix()
-
-# Chi-squared test (good for larger samples)
-chisq.test(table_outcomes)
-
-# Optional: Fisher's Exact Test (more accurate with small samples)
-fisher.test(table_outcomes)
-
-#ya it is stats sig
-
-# Create a contingency table of outcomes by outlier status
-table_outcomes <- table(TouchMatch_Comparison$OutlierStatus, TouchMatch_Comparison$Outcome)
-
-# View the raw counts
-print(table_outcomes)
-
-# View the proportions per match type
-prop.table(table_outcomes, margin = 1)  # margin = 1 → row-wise proportions (within each match type)
-
-
-chisq.test(table_outcomes)     # For general large-sample significance
-fisher.test(table_outcomes)    # Better for small sample sizes
-
-#Outlier matches — defined as games with unusually high (MAD > 2) prosocial touch counts — are strongly associated with higher win rates. This supports the idea that elevated team touch behavior may correlate with better team performance.
-
-
-############################ Outlier Summary: Which Teams, How Many, Avg Touches ############################ 
-
-# Step 1: Compute per-team summary for Normal and Outlier matches
-Outlier_Summary <- bind_rows(Touches_outliers_removed, Touches_filteredoutliers) %>%
-  mutate(
-    Team = str_pad(as.character(Team), width = 2, pad = "0"),
-    OutlierStatus = factor(OutlierStatus, levels = c("Normal", "Outlier"))
-  ) %>%
-  group_by(Team, OutlierStatus) %>%
-  summarise(
-    n_matches = n(),
-    avg_touches = mean(TouchCount, na.rm = TRUE),
-    min_touches = min(TouchCount, na.rm = TRUE),
-    max_touches = max(TouchCount, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-# Step 2 (Optional): Wide format for side-by-side comparison
-Outlier_Summary_wide <- Outlier_Summary %>%
-  pivot_wider(
-    names_from = OutlierStatus,
-    values_from = c(n_matches, avg_touches, min_touches, max_touches),
-    names_glue = "{.value}_{OutlierStatus}"
-  )
-
-# Step 3: Plot number of outlier vs normal matches per team
-ggplot(Outlier_Summary, aes(x = Team, y = n_matches, fill = OutlierStatus)) +
-  geom_col(position = "dodge") +
-  labs(
-    title = "Number of Outlier vs Normal Matches per Team",
-    x = "Team",
-    y = "Number of Matches",
-    fill = "Match Type"
-  ) +
-  theme_minimal()
-
-# Step 4 (Optional): View summary table
-View(Outlier_Summary_wide)
-
-library(ggplot2)
-
-# Filter just the outlier matches
-Touches_outliers_removed %>%
-  ggplot(aes(x = Team, y = TouchCount, fill = ScaledTouch > 0)) +
-  geom_boxplot(outlier.shape = NA, alpha = 0.5) +
-  geom_jitter(width = 0.2, alpha = 0.7, aes(color = ScaledTouch)) +
-  geom_hline(yintercept = median(Touches_outliers_removed$TouchCount), linetype = "dashed", color = "black") +
-  scale_color_gradient2(low = "blue", mid = "gray", high = "red", midpoint = 0, name = "Scaled Touch") +
-  labs(
-    title = "Touch Frequencies in Outlier Matches",
-    subtitle = "Color shows direction of deviation: blue = low, red = high",
-    x = "Team",
-    y = "Touches in Outlier Match"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "right")
-
-# Add a flag for whether a match is an outlier
-Touches_scaled <- Touches_scaled %>%
-  mutate(OutlierFlag = ifelse(abs(ScaledTouch) > 2, "Outlier", "Normal"))
-
-# Plot all matches with MAD-scaled values, color by outlier status
-ggplot(Touches_scaled, aes(x = Team, y = ScaledTouch, color = OutlierFlag)) +
-  geom_jitter(width = 0.2, alpha = 0.7, size = 2) +
-  scale_color_manual(values = c("Normal" = "gray", "Outlier" = "red")) +
-  geom_hline(yintercept = c(-2, 2), linetype = "dashed", color = "black") +
-  labs(
-    title = "MAD-Scaled Touch Frequency per Match by Team",
-    subtitle = "Outliers (|ScaledTouch| > 2) shown in red",
-    x = "Team",
-    y = "Scaled Touch (MAD Units)",
-    color = "Match Type"
-  ) +
-  theme_minimal()
-
-
-##################Parametric analysis
-
-shapiro.test(Touches_scaled$TouchCount)         # Raw touches per match
-shapiro.test(Team_Touches_Standings$TotalTouches)  # Total touches per season
-shapiro.test(Touches_scaled$ScaledTouch)
-shapiro.test(Team_touch_variability$MeanTouches)
-shapiro.test(TouchMatch_Comparison$GoalsFor)
-shapiro.test(TouchMatch_Comparison$TouchCount)
-shapiro.test(Team_Touches_Standings$TotalTouches)
-
-
-# Histogram
-ggplot(Touches_scaled, aes(x = TouchCount)) +
-  geom_histogram(binwidth = 5, fill = "steelblue", color = "white") +
-  labs(title = "Distribution of Touch Count", x = "Touch Count", y = "Frequency") +
-  theme_minimal()
-
-# Q-Q Plot
-qqnorm(Touches_scaled$TouchCount)
-qqline(Touches_scaled$TouchCount, col = "red")
-
-mad_val <- mad(Team_Touches_Standings$TotalTouches)
-sd_val <- sd(Team_Touches_Standings$TotalTouches)
-mad_to_sd_ratio <- mad_val / sd_val
-
-library(ggplot2)
-
-ggplot(Team_Touches_Standings, aes(x = TotalTouches)) +
-  geom_density(fill = "lightblue", alpha = 0.5) +
-  geom_vline(aes(xintercept = median(TotalTouches)), color = "blue", linetype = "dashed") +
-  geom_vline(aes(xintercept = median(TotalTouches) + mad(TotalTouches)), color = "red", linetype = "dotted") +
-  geom_vline(aes(xintercept = median(TotalTouches) - mad(TotalTouches)), color = "red", linetype = "dotted") +
-  labs(title = "Density Plot with MAD Bands", x = "Total Touches", y = "Density") +
-  theme_minimal()
+#Extreme touch events seem to propose a different match outcome. Dive into match level analysis.
