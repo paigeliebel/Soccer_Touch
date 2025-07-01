@@ -130,5 +130,6 @@ team_variation_summary <- cor.test(team_variation_ranked$iqr_touch, team_variati
 
 # No relationship between variability within-a-team and end of season rankings. 
 
-###### Dive into Outlier Analysis! ###### This will show interesting stuff. 
+###### Dive into Outlier Analysis! This will maybe show interesting stuff. 
+## check out the OverviewSummaryData sheet for this 
 

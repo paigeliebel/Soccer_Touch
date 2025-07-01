@@ -468,6 +468,17 @@ match_outcomes_outliers <- ggplot(outcome_summary, aes(x = OutlierStatus, y = pr
 
 table_outcomes <- table(Touches_per_match_outliers$OutlierStatus, Touches_per_match_outliers$Outcome)
 
+library(knitr)
+
+# Create the summary table of counts by OutlierStatus and Outcome
+outcome_summary_table <- Touches_per_match_outliers %>%
+  group_by(OutlierStatus, Outcome) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = Outcome, values_from = Count, values_fill = 0)
+
+# Display nicely formatted table in R Markdown
+kable(outcome_summary_table, caption = "Match Outcomes by Outlier Status")
+
 fisher_res <- fisher.test(table_outcomes)
 
 #Extreme touch events seem to propose a different match outcome. Dive into match level analysis.
