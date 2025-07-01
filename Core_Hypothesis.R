@@ -95,6 +95,10 @@ outliers <- ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches, label
   ) +
   theme_minimal()
 
+Touches_per_game <- Touches_CoreHyp %>%
+  group_by(Team, SeasonMatchNumber) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
 # Prep: Join team rank for ordering
 Touches_per_game_ranked <- Touches_per_game %>%
   mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%

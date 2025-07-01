@@ -216,6 +216,7 @@ icc_summary %>%
   kable(caption = "ICC Values by Touch Type", align = "c") %>%
   kable_styling(full_width = FALSE)
 
+
 # ###Pair-wise Difference Per Match | Looks at differences between rater pairs
 # 
 # # Prepare a compact version of your data

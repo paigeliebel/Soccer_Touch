@@ -5,6 +5,22 @@ author: "Paige Liebel"
 output: html_document
 date: "2025-06-18"
 ---
+## Conversation with Annett
+
+Emphasis that this is an 'internal' document with messy graphs and choppy code.
+
+I had an in depth meeting with Anne last Thursday -- she pointed me where to dive deeper and what to cut. Therefore, there is a slight modification to this document since you saw it a few weeks ago for the first time.
+
+Instead of doing a mix of parametric and non-parametric throughout this document, Anne instructed me to choose one and stick with it. Based on the Shapiro-Wilk Results, a little more than half of the datasets were non-parameric, and the parametric ones where borderline. You will see this shift in this version of the document. 
+
+I met with the masters students, Tobi and Simon, approximately 2 weeks ago to push them to 'narrow' down what they are focusing on. I am focusing on overall touch frequency to season and match outcomes. Additionally, I have a very primitive section on reciprocity and social networks. I hope Tobi and simon can focus more on the touch actions, toucher/touchee relationships, and haptic rituals.
+
+For your knowledge (based on my understanding):
+
+Simon is interested in the sub-groups and their behaviors on the field. For example, how does the defensive unit interact with one another and the goal keeper? What about the scorer and assistor?
+
+Tobias is very interested in the contextual factors of the match associated with touch. He told me he was persuing the Comeback Hypothesis! Yay. I think that one will be interesting. 
+
 ## Executive Summary
 
 This report presents an initial analysis of pro-social touch behaviors in the NWSL 2024 season, exploring how patterns of touch between teammates may be associated with team performance and match outcomes. Using a dataset of ~14,000 touch instances (filtered to ~7,000 pro-social touches), I tested four primary hypotheses:
@@ -19,18 +35,23 @@ _Finding:_ A significant positive correlation was observed — matches where tea
 
 3. **Underdog Hypothesis**  
 _Hypothesis:_ Higher levels of prosocial touch would be particularly associated with better outcomes for underdog teams facing stronger opponents.  
-_Finding:_ Both observed data and a GAM model indicated that, for underdog teams, higher levels of prosocial touch were associated with more favorable match outcomes — suggesting that prosocial touch may be a useful behavioral marker of cohesion or resilience in challenging contexts.
+_Finding:_ No synergistic relationship between touch and underdog status was observed. Touch seems to help teams regardless of their rank. It has an addictive effect, not a synergistic one. Underdogs do not benefit more fromtouch than favorites, but they still do benefit.
+**I created confusion in the section on my last edition of this report. I had been running the analysis on 2/3s of the data waiting for Simon's collection to be finished. This was the only section with a significant difference in outcomes.**
 
 4. **Social Network & Reciprocity**  
 _Hypothesis:_ Teams with a higher ratio of reciprocal (vs. non-reciprocal) touches, and more evenly distributed touch behaviors across players, would finish higher in the standings.  
 _Finding:_ A higher reciprocal-to-non-reciprocal touch ratio was significantly associated with better standings. Measures of overall touch distribution across players (CV, Gini) were not significantly associated with final standings.
 
 **Inter-Rater Reliability:**  
-An Intraclass Correlation Coefficient (ICC = 0.79) indicates good agreement between coders, providing confidence in the reliability of the dataset.
+An Intraclass Correlation Coefficient (ICC = 0.79) indicates good agreement between coders, providing confidence in the reliability of the dataset. Additionally looked at the ICC fore reciprocity (Reciprocal with ICC = 0.82 and non-reciprocal with ICC = 0.68).
 
 **Overall Takeaway:**  
-While total season-long touch frequency alone was not associated with team success, the *patterns and contexts* of prosocial touch — particularly in high-pressure or underdog situations — appear meaningfully associated with match outcomes. These early results suggest that prosocial touch behavior may serve as a useful marker of team cohesion and resilience in professional sport, warranting further study.
+While total season-long touch frequency alone was not associated with team success, the *patterns and contexts* of prosocial touch appear meaningfully associated with match outcomes. These early results suggest that prosocial touch behavior may serve as a useful marker of team cohesion and resilience in professional sport, warranting further study.
 
+**Next Steps / deeper dive** 
+Anne emphasized showing graphs of 'raw data'. Especially interested in team by team breakdown. Therefore, many of these graphs you see will be blown-out from a global all-team to an additional 14 graphs (one for each team).
+
+Anne and I decided where to dive deeper next based on how the touch frequency rate chagnes throughout a match. Tehre is a steady increase in touch frequency as the game progress. Therefore, we think it would be interesting to see if we can find a catious relationship between touch and winning. Basically asking the following questions: Is touch assocaited with winning or is winning associated with touch? I would compare teh baseline rates of touch a team (or perhaps the overall league) exhibits during that time typically in a match to the touch frequency leading up to the first goal scored. See the handwritten paper. 
 
 ## Introduction for this RMarkdown
 
@@ -42,7 +63,7 @@ At the end, I have a quick mention to the Inter-Rater analysis. I had hoped to f
 
 Additionally, here is a link to the git-hub repository containing my code and the raw data spreadsheets if you would like to take a look. I may have to give you permission to access them, apologies for the extra step: (https://github.com/paigeliebel/Soccer_Touch.git)
 
-For readability, the code required for cleaning, merging, and fixing typos in the data frames was excluded from this report. You can see the code in the github.
+For readability, the code required for cleaning, merging, and fixing typos in the data frames was excluded from this report.
 
 ```{r DataSetup, message=FALSE, warning=FALSE, include=FALSE}
 # Data_Management
@@ -388,6 +409,10 @@ Pro-social touches are defined as all haptic rituals recorded excluding: Tactica
 Situations excluded from analysis for this hypothesis: Goals For/Against, Substitutions
 
 ```{r Hyp1, echo=TRUE, message=FALSE, warning=FALSE, paged.print=TRUE}
+# Core_Hypothesis
+# Added Outlier Analysis as well
+# For more information on these data frames please look at the README.md file
+
 library(tidyverse)
 library(data.table)
 library(broom)
@@ -396,6 +421,22 @@ library(readxl)
 library(rmarkdown)
 library(readr)
 library (dplyr)
+
+source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
+
+#Ensure to use the correct dfs. Touches_final and Matches_final are correct. They only include assigned rater data, no repeat matches
+
+#Check to make sure data frames are loaded:
+if (!exists("Touches_final") | !exists("Matches_final") | !exists("FinalStandings")) {
+  stop("Touches_final, Matches_final, or FinalStandings not loaded. Check Data_Management.R.")
+}
+
+############################ Create Data Set for this Hypothesis ############################ 
+
+# Prosocial touches are defined as all haptic rituals recorded excluding: 
+#   Tactical Adjustments, Collisions, and Negative Touch
+# 
+# Situations excluded from analysis for this hypothesis: Goals For/Against, Substitutions
 
 Exclude_Touch <- c("TA", "CO", "NEG")
 Exclude_Situation <- c("GF", "GA", "SUB") 
@@ -434,29 +475,108 @@ TouchFreq_vs_FinalStandings <- ggplot(Team_Touches_Standings, aes(x = Rank, y = 
   theme_minimal()
 
 TouchFreq_vs_FinalStandings_Stats <- cor_result <- cor.test(Team_Touches_Standings$TotalTouches, Team_Touches_Standings$Rank)
-```
 
-# Results for Hypothesis 1:
-```{r Hyp 1 Output, echo=FALSE, message=FALSE, warning=FALSE}
-TouchFreq_vs_FinalStandings
+#Bar graph of Total Touches per Team over the season
+Touches_per_Team <- ggplot(Team_Touches_Standings, aes(x = reorder(TeamID, -TotalTouches), y = TotalTouches)) +
+  geom_col(fill = "steelblue") +
+  labs(
+    title = "Total Touches per Team (Season)",
+    x = "Team",
+    y = "Total Touches"
+  ) +
+  theme_minimal()
 
-TouchFreq_vs_FinalStandings_Stats
-```
+############################ Investigating outliers ############################ 
 
-As seen in the results above, there does NOT appear to be a strong correlation between total frequency of pro-social touch and overall end of season success. This is counter to the Kraus Basketball paper who concluded more touch leads to more success. 
+# Check distribution and identify potential outlier
+Team_Touches_Standings %>%
+  arrange(desc(TotalTouches))
 
-However, I am interested in looking at other factors that could be indicative of touch paired to end of season success. The fact that I excluded goal celebrations is vital. Could we include Goal Celebration touches but control for the number of goals scored?
+library(ggrepel)
 
-Perhaps, I can convince one of the masters students to dive into these other hypotheses. 
+outliers <- ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches, label = TeamID)) +
+  geom_point(size = 3) +
+  geom_text_repel() +
+  geom_smooth(method = "lm", se = FALSE, color = "blue") +
+  scale_x_reverse() +
+  labs(
+    title = "Final Rank vs Touch Frequency (w/ Labels)",
+    x = "Final Season Rank",
+    y = "Total Touches"
+  ) +
+  theme_minimal()
 
-## Sub-Hypothesis 1
+Touches_per_game <- Touches_CoreHyp %>%
+  group_by(Team, SeasonMatchNumber) %>%
+  summarise(TouchCount = n(), .groups = "drop")
 
-**Hypothesis 1.a**: *Teams that show less variability across matches throughout a season with regards to their touch will secure higher positions in the season's final standings.*
+# Prep: Join team rank for ordering
+Touches_per_game_ranked <- Touches_per_game %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  filter(!is.na(Rank))
 
-For the Sub-Hypothesis the touches were scaled for each team based on MAD (mean absolute distance). There was a need to scale touch per team as some teams are 'touchier' than others.
+ggplot(Touches_per_game, aes(x = TouchCount)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "white") +
+  labs(
+    title = "Distribution of Touches per Game (All Teams)",
+    x = "Touches per Game",
+    y = "Number of Matches"
+  ) +
+  theme_minimal()
 
-```{r SubHyp1, echo=TRUE, message=FALSE, warning=FALSE}
-########## Within-Team Variability in Touch Frequency ########## 
+# Replace "xx" with the team you're investigating
+team_focus <- "13"
+
+Touches_per_game %>%
+  mutate(IsTarget = ifelse(Team == team_focus, "Target Team", "Others")) %>%
+  ggplot(aes(x = TouchCount, fill = IsTarget)) +
+  geom_histogram(binwidth = 5, position = "identity", alpha = 0.7, color = "white") +
+  scale_fill_manual(values = c("Target Team" = "red", "Others" = "gray")) +
+  labs(
+    title = paste("Touches per Game Distribution — Highlighting Team", team_focus),
+    x = "Touches per Game",
+    y = "Number of Matches",
+    fill = "Team"
+  ) +
+  theme_minimal()
+
+#Histogram per team
+ggplot(Touches_per_game, aes(x = TouchCount)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "white") +
+  facet_wrap(~ Team, ncol = 4) +
+  labs(
+    title = "Touches per Game Distribution by Team",
+    x = "Touches per Game",
+    y = "Number of Matches"
+  ) +
+  theme_minimal()
+
+#Density plot by team
+ggplot(Touches_per_game, aes(x = TouchCount, color = Team)) +
+  geom_density(size = 1, alpha = 0.7) +
+  labs(
+    title = "Touches per Game: Density by Team",
+    x = "Touches per Game",
+    y = "Density",
+    color = "Team"
+  ) +
+  theme_minimal()
+
+#RidgePlot
+# Requires ggridges
+library(ggridges)
+
+ggplot(Touches_per_game, aes(x = TouchCount, y = reorder(Team, TouchCount, median), fill = Team)) +
+  geom_density_ridges(scale = 2, alpha = 0.8, color = "white") +
+  labs(
+    title = "Touches per Game Distribution by Team",
+    x = "Touches per Game",
+    y = "Team (Sorted by Median Touches)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+############################ Within-Team Variability in Touch Frequency ############################ 
 
 # Looks at the variability a team has across matches throughout the season
 
@@ -524,7 +644,7 @@ MAD_TouchesPerGame_vs_rank <- ggplot(Touches_scaled_ranked, aes(x = Rank, y = Sc
   ) +
   theme_minimal()
 
-########## Within-Team Variability in Touch Frequency vs Ranking ########## 
+############################ Within-Team Variability in Touch Frequency vs Ranking ############################ 
 
 # Join variability data to final standings
 Variability_vs_Rank <- Team_touch_variability %>%
@@ -546,7 +666,7 @@ Within_Variability_vs_Rank <- ggplot(Variability_vs_Rank, aes(x = Rank, y = SDTo
 
 Within_Variability_vs_Rank_Stats <- cor.test(Variability_vs_Rank$SDTouches, Variability_vs_Rank$Rank)
 
-#In regards to within-team variability including MAD scaling
+#In regards to within-tea variability including MAD normalization
 
 Team_scaled_variability <- Touches_scaled %>%
   group_by(Team) %>%
@@ -577,6 +697,339 @@ ScaledTouch_Variability_vs_Rank_Stats <- cor.test(
   Team_scaled_variability_ranked$Rank
 )
 
+############################ Investigating data after removing outliers ############################ 
+
+Touches_filteredoutliers <- Touches_scaled %>%
+  filter(abs(ScaledTouch) <= 2)
+
+Touches_outliers_removed <- Touches_scaled %>%
+  filter(abs(ScaledTouch) > 2)
+
+#Yes, the filtering included both high and low outliers — anything more than 2 MAD units away from the team median, in either direction (too high or too low), was removed.
+library(patchwork)
+
+# Full data
+p1 <- ggplot(Touches_scaled, aes(x = TouchCount)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "white") +
+  labs(
+    title = "Touches per Game (All Games)",
+    x = "Touches per Game",
+    y = "Number of Matches"
+  ) +
+  theme_minimal()
+
+# Filtered data
+p2 <- ggplot(Touches_filteredoutliers, aes(x = TouchCount)) +
+  geom_histogram(binwidth = 5, fill = "darkgreen", color = "white") +
+  labs(
+    title = "Touches per Game (Outliers Removed)",
+    x = "Touches per Game",
+    y = "Number of Matches"
+  ) +
+  theme_minimal()
+
+# Display side-by-side
+p1 + p2
+
+############################ Removal of Outliers | Core Hypothesis ############################ 
+
+Touches_filteredoutliers  # contains Team, SeasonMatchNumber, TouchCount
+
+# Get only the core hypothesis touches from the non-outlier matches
+Touches_CoreHyp_Clean <- Touches_CoreHyp %>%
+  semi_join(Touches_filteredoutliers, by = c("Team", "SeasonMatchNumber"))
+
+Touches_by_team_clean <- Touches_CoreHyp_Clean %>%
+  mutate(Team = str_trim(as.character(Team))) %>%
+  count(Team, name = "TotalTouches")
+
+Team_Touches_Standings_clean <- FinalStandings %>%
+  left_join(Touches_by_team_clean, by = c("TeamID" = "Team")) %>%
+  filter(!is.na(TotalTouches))
+
+TouchFreq_vs_FinalStandings_clean <- ggplot(Team_Touches_Standings_clean, aes(x = Rank, y = TotalTouches)) +
+  geom_point(size = 3, color = "darkgreen") +
+  geom_smooth(method = "lm", se = FALSE, color = "darkgreen", linewidth = 1) +
+  scale_x_reverse() +
+  labs(
+    title = "Final Rank vs Touch Frequency (Cleaned, Outliers Removed)",
+    x = "Final Season Rank",
+    y = "Total Touches (No Outlier Matches)"
+  ) +
+  theme_minimal()
+
+TouchFreq_vs_FinalStandings_clean_Stats <- cor.test(
+  Team_Touches_Standings_clean$TotalTouches,
+  Team_Touches_Standings_clean$Rank
+)
+
+original_plot <- ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches)) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue", linewidth = 1) +
+  scale_x_reverse() +
+  labs(
+    title = "Original: Rank vs Touch Frequency (All Matches)",
+    x = "Final Season Rank",
+    y = "Total Touches"
+  ) +
+  theme_minimal()
+
+
+
+original_plot + TouchFreq_vs_FinalStandings_clean
+
+
+############################ Deep Dive Outlier Analysis ############################ 
+
+Matches_foroutliers <- Matches_final %>%
+  mutate(TeamID = substr(as.character(MatchID), 1, 2))
+
+Touches_outliers_removed <- Touches_outliers_removed %>%
+  mutate(OutlierStatus = "Outlier")
+
+Touches_filteredoutliers <- Touches_filteredoutliers %>%
+  mutate(OutlierStatus = "Normal")
+
+# Combine both into one data frame
+TouchMatch_Comparison <- bind_rows(Touches_outliers_removed, Touches_filteredoutliers) %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0")) %>%
+  left_join(Matches_foroutliers, by = c("Team" = "TeamID", "SeasonMatchNumber"))
+
+TouchMatch_Comparison <- TouchMatch_Comparison %>%
+  mutate(Team = str_pad(as.character(Team), width = 2, pad = "0"))
+
+TouchMatch_Comparison <- TouchMatch_Comparison %>%
+  mutate(
+    GoalsFor = case_when(
+      GoalsFor %in% c("X", "XX") ~ "0",
+      TRUE ~ GoalsFor
+    ),
+    GoalsFor = as.numeric(GoalsFor)
+  )
+
+# Compute sample size per group
+n_labels <- TouchMatch_Comparison %>%
+  group_by(OutlierStatus) %>%
+  summarise(
+    n = n(),
+    y_pos = max(GoalsFor, na.rm = TRUE) + 0.5  # position just above max value
+  )
+
+#goals scored
+ggplot(TouchMatch_Comparison, aes(x = OutlierStatus, y = GoalsFor)) +
+  geom_boxplot(fill = "gray", outlier.shape = NA) +
+  geom_jitter(width = 0.2, alpha = 0.6, color = "darkred") +
+  geom_text(data = n_labels, aes(x = OutlierStatus, y = y_pos, label = paste0("n = ", n)), vjust = 0) +
+  labs(
+    title = "Goals Scored in Outlier vs Normal Matches",
+    x = "Match Type",
+    y = "Goals Scored"
+  ) +
+  theme_minimal()
+
+
+#proportion of wins
+TouchMatch_Comparison %>%
+  group_by(OutlierStatus, Outcome) %>%
+  summarise(n = n(), .groups = "drop") %>%
+  group_by(OutlierStatus) %>%
+  mutate(
+    prop = n / sum(n),
+    label_y = prop + 0.03  # slightly above the bar
+  ) %>%
+  ggplot(aes(x = OutlierStatus, y = prop, fill = Outcome)) +
+  geom_col(position = "dodge") +
+  geom_text(aes(label = paste0("n = ", n), y = label_y), 
+            position = position_dodge(width = 0.9), 
+            vjust = 0, size = 3.5) +
+  labs(
+    title = "Match Outcomes in Outlier vs Normal Matches",
+    x = "Match Type",
+    y = "Proportion of Matches"
+  ) +
+  theme_minimal()
+
+
+# New n_labels specifically for Outcome x OutlierStatus
+n_labels_touch <- TouchMatch_Comparison %>%
+  group_by(Outcome, OutlierStatus) %>%
+  summarise(
+    n = n(),
+    y_pos = max(TouchCount, na.rm = TRUE) + 2,
+    .groups = "drop"
+  )
+
+#TouchCount vs Match Outcome
+ggplot(TouchMatch_Comparison, aes(x = Outcome, y = TouchCount, fill = OutlierStatus)) +
+  geom_boxplot(position = position_dodge(width = 0.75)) +
+  geom_text(data = n_labels_touch,
+            aes(x = Outcome, y = y_pos, label = paste0("n = ", n), group = OutlierStatus),
+            position = position_dodge(width = 0.75),
+            vjust = 0, size = 3.5) +
+  labs(
+    title = "Touch Count by Match Result and Outlier Status",
+    x = "Match Result",
+    y = "Touches",
+    fill = "Match Type"
+  ) +
+  theme_minimal()
+
+
+#do outlier matches have significantly higher goals? 
+t.test(GoalsFor ~ OutlierStatus, data = TouchMatch_Comparison)
+
+#  Outlier matches (those with abnormally high/low touch rates) are associated with higher average goals scored than normal matches — by ~0.55 goals on average.
+
+# This supports the idea that "touchy" or "chaotic" matches may coincide with more offensive action (more goals).
+wilcox.test(GoalsFor ~ OutlierStatus, data = TouchMatch_Comparison)
+
+#There is a statistically significant difference in the distribution of goals scored between outlier and normal matches (p = 0.0175).
+#This confirms the earlier t-test finding — but with fewer assumptions (no need for normality or equal variances).
+
+#statistically more likely to have wins?
+# Create a contingency table of outcomes by outlier status
+table_outcomes <- TouchMatch_Comparison %>%
+  count(OutlierStatus, Outcome) %>%
+  pivot_wider(names_from = Outcome, values_from = n, values_fill = 0) %>%
+  column_to_rownames("OutlierStatus") %>%
+  as.matrix()
+
+# Chi-squared test (good for larger samples)
+chisq.test(table_outcomes)
+
+# Optional: Fisher's Exact Test (more accurate with small samples)
+fisher.test(table_outcomes)
+
+#ya it is stats sig
+
+# Create a contingency table of outcomes by outlier status
+table_outcomes <- table(TouchMatch_Comparison$OutlierStatus, TouchMatch_Comparison$Outcome)
+
+# View the raw counts
+print(table_outcomes)
+
+# View the proportions per match type
+prop.table(table_outcomes, margin = 1)  # margin = 1 → row-wise proportions (within each match type)
+
+
+chisq.test(table_outcomes)     # For general large-sample significance
+fisher.test(table_outcomes)    # Better for small sample sizes
+
+#Outlier matches — defined as games with unusually high (MAD > 2) prosocial touch counts — are strongly associated with higher win rates. This supports the idea that elevated team touch behavior may correlate with better team performance.
+
+
+############################ Outlier Summary: Which Teams, How Many, Avg Touches ############################ 
+
+# Step 1: Compute per-team summary for Normal and Outlier matches
+Outlier_Summary <- bind_rows(Touches_outliers_removed, Touches_filteredoutliers) %>%
+  mutate(
+    Team = str_pad(as.character(Team), width = 2, pad = "0"),
+    OutlierStatus = factor(OutlierStatus, levels = c("Normal", "Outlier"))
+  ) %>%
+  group_by(Team, OutlierStatus) %>%
+  summarise(
+    n_matches = n(),
+    avg_touches = mean(TouchCount, na.rm = TRUE),
+    min_touches = min(TouchCount, na.rm = TRUE),
+    max_touches = max(TouchCount, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# Step 2 (Optional): Wide format for side-by-side comparison
+Outlier_Summary_wide <- Outlier_Summary %>%
+  pivot_wider(
+    names_from = OutlierStatus,
+    values_from = c(n_matches, avg_touches, min_touches, max_touches),
+    names_glue = "{.value}_{OutlierStatus}"
+  )
+
+# Step 3: Plot number of outlier vs normal matches per team
+ggplot(Outlier_Summary, aes(x = Team, y = n_matches, fill = OutlierStatus)) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "Number of Outlier vs Normal Matches per Team",
+    x = "Team",
+    y = "Number of Matches",
+    fill = "Match Type"
+  ) +
+  theme_minimal()
+
+# Step 4 (Optional): View summary table
+View(Outlier_Summary_wide)
+
+library(ggplot2)
+
+# Filter just the outlier matches
+Touches_outliers_removed %>%
+  ggplot(aes(x = Team, y = TouchCount, fill = ScaledTouch > 0)) +
+  geom_boxplot(outlier.shape = NA, alpha = 0.5) +
+  geom_jitter(width = 0.2, alpha = 0.7, aes(color = ScaledTouch)) +
+  geom_hline(yintercept = median(Touches_outliers_removed$TouchCount), linetype = "dashed", color = "black") +
+  scale_color_gradient2(low = "blue", mid = "gray", high = "red", midpoint = 0, name = "Scaled Touch") +
+  labs(
+    title = "Touch Frequencies in Outlier Matches",
+    subtitle = "Color shows direction of deviation: blue = low, red = high",
+    x = "Team",
+    y = "Touches in Outlier Match"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "right")
+
+# Add a flag for whether a match is an outlier
+Touches_scaled <- Touches_scaled %>%
+  mutate(OutlierFlag = ifelse(abs(ScaledTouch) > 2, "Outlier", "Normal"))
+
+# Plot all matches with MAD-scaled values, color by outlier status
+ggplot(Touches_scaled, aes(x = Team, y = ScaledTouch, color = OutlierFlag)) +
+  geom_jitter(width = 0.2, alpha = 0.7, size = 2) +
+  scale_color_manual(values = c("Normal" = "gray", "Outlier" = "red")) +
+  geom_hline(yintercept = c(-2, 2), linetype = "dashed", color = "black") +
+  labs(
+    title = "MAD-Scaled Touch Frequency per Match by Team",
+    subtitle = "Outliers (|ScaledTouch| > 2) shown in red",
+    x = "Team",
+    y = "Scaled Touch (MAD Units)",
+    color = "Match Type"
+  ) +
+  theme_minimal()
+
+
+##################Parametric analysis
+
+shapiro.test(Touches_scaled$TouchCount)         # Raw touches per match
+shapiro.test(Team_Touches_Standings$TotalTouches)  # Total touches per season
+shapiro.test(Touches_scaled$ScaledTouch)
+shapiro.test(Team_touch_variability$MeanTouches)
+shapiro.test(TouchMatch_Comparison$GoalsFor)
+shapiro.test(TouchMatch_Comparison$TouchCount)
+shapiro.test(Team_Touches_Standings$TotalTouches)
+
+
+# Histogram
+ggplot(Touches_scaled, aes(x = TouchCount)) +
+  geom_histogram(binwidth = 5, fill = "steelblue", color = "white") +
+  labs(title = "Distribution of Touch Count", x = "Touch Count", y = "Frequency") +
+  theme_minimal()
+
+# Q-Q Plot
+qqnorm(Touches_scaled$TouchCount)
+qqline(Touches_scaled$TouchCount, col = "red")
+
+mad_val <- mad(Team_Touches_Standings$TotalTouches)
+sd_val <- sd(Team_Touches_Standings$TotalTouches)
+mad_to_sd_ratio <- mad_val / sd_val
+
+library(ggplot2)
+
+ggplot(Team_Touches_Standings, aes(x = TotalTouches)) +
+  geom_density(fill = "lightblue", alpha = 0.5) +
+  geom_vline(aes(xintercept = median(TotalTouches)), color = "blue", linetype = "dashed") +
+  geom_vline(aes(xintercept = median(TotalTouches) + mad(TotalTouches)), color = "red", linetype = "dotted") +
+  geom_vline(aes(xintercept = median(TotalTouches) - mad(TotalTouches)), color = "red", linetype = "dotted") +
+  labs(title = "Density Plot with MAD Bands", x = "Total Touches", y = "Density") +
+  theme_minimal()
+
+
 ```
 
 # Results for Sub-Hypothesis 1
@@ -606,15 +1059,7 @@ $$
 \text{ScaledTouch}_i = \frac{ X_i - \text{median}(X) }{ \text{MAD} }
 $$
 
-Then I looked at the with-in team  variation across teams. In other words, does consistency of touch frequencies correlate to end of season standings? I looked at just standard deviation of overall touch, not scaled:
-
-```{r echo=FALSE, message=FALSE, warning=FALSE}
-Within_Variability_vs_Rank
-
-Within_Variability_vs_Rank_Stats
-```
-
-Then I took a look at the scaled touch version:
+Then I looked at the with-in team  variation across teams. In other words, does consistency of touch frequencies correlate to end of season standings? Scaled touch version:
 
 ```{r}
 Team_scaled_variability_ranked_plot
@@ -623,9 +1068,7 @@ ScaledTouch_Variability_vs_Rank_Stats
 
 ```
 
-Neither proved to be statistically significant. 
-
-With the scaled version, there is a moderate positive correlation: a higher SD of scaled touch is somewhat associated with worse ranking. In other words, there is a slight possible relationship between more consistency of touch frequency and end of season ranking.
+Not statistically significant. However, there is a moderate positive correlation: a higher deviation of scaled touch is somewhat associated with worse ranking. In other words, there is a slight possible relationship between more consistency of touch frequency and end of season ranking.
 
 ## **Hypothesis 2: Inter-Match Variability**
 
@@ -633,9 +1076,11 @@ With the scaled version, there is a moderate positive correlation: a higher SD o
 
 Statistically Significant Results. Yay.
 
+This is where Anne would like me to blow out to 14 graphs per team. 
+
 Note: Whereas hypothesis 1 looked at outcomes for the whole season, hypothesis 2 is looking at a match level outcome. 
 
-For each team, we calculated how many touches they made in a match above or below their own season average (in raw touch counts). We then tested whether matches where a team touched more than usual were associated with better goal differential, using Pearson correlation and Wilcoxon rank-sum tests. I ran a Wilcoxon test in fear that the results were not nicely distributed.
+For each team, we calculated how many touches they made in a match above or below their own season average (in raw touch counts). We then tested whether matches where a team touched more than usual were associated with better goal differential.
 
 To further test whether match outcomes differed between matches with above- or below-average team touch behavior, we conducted a Wilcoxon rank-sum test (non-parametric, due to non-normal distribution of goal differentials). The test compared goal differential in matches where teams touched more than their season average versus those with below-average touch counts.
 
@@ -723,38 +1168,6 @@ Touch_GoalDiff_Analysis_Graph <- ggplot(Touch_GoalDiff_Analysis, aes(x = ScaledA
 # Pearson
 Touch_GoalDiff_Analysis_Stats <- cor.test(Touch_GoalDiff_Analysis$ScaledAboveAvg, Touch_GoalDiff_Analysis$GoalDiff)
 
-############## Wilcoxon: Inter-Match Variability Hypothesis ############## 
-
-# Wilcoxon: Perhaps not nicely distributed: “Do teams tend to have higher goal differentials when they are more touchy than their season average?”
-
-# Create AboveAvgTouch flag
-Touch_AboveBelow_Analysis <- Touch_GoalDiff_Analysis %>%
-  mutate(AboveAvgTouch = ScaledAboveAvg > 0)
-
-# Summary of goal differentials by touch group
-Touch_AboveBelow_Analysis %>%
-  group_by(AboveAvgTouch) %>%
-  summarise(
-    n = n(),
-    mean_GD = mean(GoalDiff, na.rm = TRUE),
-    median_GD = median(GoalDiff, na.rm = TRUE),
-    sd_GD = sd(GoalDiff, na.rm = TRUE)
-  )
-
-# Wilcoxon rank-sum test
-Wilcox_Test <- wilcox.test(GoalDiff ~ AboveAvgTouch, data = Touch_AboveBelow_Analysis)
-
-# Visualize Wilcoxon
-Wilcox_Test_Graph <- ggplot(Touch_AboveBelow_Analysis, aes(x = AboveAvgTouch, y = GoalDiff)) +
-  geom_boxplot(fill = "lightblue") +
-  scale_x_discrete(labels = c("FALSE" = "Below Avg Touch", "TRUE" = "Above Avg Touch")) +
-  labs(
-    title = "Goal Differential by Above/Below Avg Touch",
-    x = "Above Team's Avg Touch?",
-    y = "Goal Differential"
-  ) +
-  theme_minimal()
-
 ```
 
 # Results for Hypothesis 2:
@@ -769,26 +1182,12 @@ On the graph above: Positive values indicate matches where the team touched more
 
 **We observed a statistically significant positive correlation between match-level touch deviation and goal differential (r = 0.31, p < 0.001, 95% CI [0.20, 0.40]). In other words, matches where a team touched more than their season average were associated with higher goal differentials.**
 
-```{r}
-Wilcox_Test
-
-Wilcox_Test_Graph 
-```
-
-The Wilcoxon test categorized the team to compare two types of matches: matches where the teams touched more than average and matches where the team touched less than average. 
-
-We tested: Did these two groups have different goal differentials?
-
-Reasons to use Wilcoxon: Non-parametric, grouping not by team but simply by above and below average, goal differential is not normally distributed (lots of 1s but not too many 5 or 6).
-
-**Results of Wilcoxon Test: A Wilcoxon rank-sum test showed that goal differentials were significantly higher in matches where teams touched more than their season average compared to matches with below-average touch counts (W = 7714, p < 0.001).**
-
 
 ## **Hypothesis 3: Underdog Hypothesis**
 
 *Teams with greater frequencies of pro-social touch when competing against higher ranked teams will secure a better goal differential than teams with fewer touch instances facing an opponent of the same spread in rankings.* 
 
-Statistically Significant Result! Yay. 
+Not Statistically Significant. 
 
 Definition of *spread*: Spread in rankings is defined as the difference in current standings the teams have between each other. Therefore, the 1st ranked team competing against the 7th ranked team has the same spread as the 7th ranked team playing against the 14th ranked team. This could expose a team's cohesion by how they react when facing adversity.
 
@@ -800,7 +1199,7 @@ In other words → touch might help underdog teams cope with adversity.
 For each match, computed how touchy the team was vs. its typical behavior:
 ScaledTouch = (TouchCount - Median) / MAD
 
-I used both an ANOVA (which described nothing of interest) and a GAM model (which I love).
+I used both an ANOVA (which described nothing of interest) and a GAM model.
 
 Note: First 13 matches of season are excluded. Not all teams play the first weekend of the season. Therefore, the current standings only have a 'comprehensive picture' going into the 3rd weekend. In other words, after match 13, at least every team has completed 1 game.
 
@@ -1234,9 +1633,7 @@ GAM_Model_Data_Plot
 knitr::kable(grid_summary, digits = 2, caption = "GAM Model Predicted Goal Differential by Spread and Touch Level")
 ```
 
-**The GAM-based summary plot highlights that prosocial touch behaviors are most strongly linked to improved outcomes for underdog teams. High-touch underdogs were predicted to perform markedly better than low-touch underdogs, whereas for favored teams, touch level had less impact on predicted outcomes.**
-
-*The observed and modeled results both indicated that match outcomes were associated with varying levels of prosocial touch behavior, particularly in relation to competitive context. In both the raw data and the GAM model, mild underdogs showed the largest positive association between higher touch levels and goal differential. The GAM model further suggested stronger nonlinear associations for mild favorites, with predicted goal differentials increasing with higher touch. Among major favorites, both observed and modeled results showed relatively consistent outcomes across touch levels, though the model indicated a possible association between higher touch and larger predicted margins. These results suggest that prosocial touch frequency may serve as a useful indicator of match dynamics, particularly when teams face moderate competitive adversity.*
+**Nothing here. Touch helps all groups. It is additive, not synergistic.**
 
 ## **Hypothesis 4: Social Network and Reciprocity**
 
@@ -1719,6 +2116,7 @@ To assess inter-rater reliability, we computed an Intraclass Correlation Coeffic
 **The observed ICC of 0.79 indicates that raters showed good consistency in coding prosocial touch frequency, providing confidence in the reliability of the dataset used for further analyses.**
 
 ```{r message=FALSE, warning=FALSE}
+
 #Inter-Rater Analysis
 
 #Goal is to determine how "similar" raters were
@@ -1778,14 +2176,186 @@ icc_data <- Interrater %>%
 # Apply ICC (two-way random effects model)
 icc_result <- icc(icc_data[,-1], model = "twoway", type = "agreement", unit = "single")
 
+print(icc_result)
+
+############################ Simple Reciprocity Check ############################
+
+# Updated exclusion list
+Exclude_Situation_IT <- c("GF", "GA", "SUB", "IT")
+
+Reciprocal_IR <- Touches_interrater %>%
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation_IT)) %>%
+  mutate(
+    Reciprocity = str_trim(Reciprocal),
+    ReciprocityType = case_when(
+      Reciprocity %in% c("Y", "G") ~ "Reciprocal",
+      Reciprocity == "N" ~ "NonReciprocal",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(ReciprocityType))
+
+#Count how many touches each rater coded as reciprocal vs non-reciprocal 
+Recip_Counts <- Reciprocal_IR %>%
+  group_by(SeasonMatchNumber, Rater, ReciprocityType) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ReciprocityType, values_from = Count, values_fill = 0)
+
+
+#Group by match and rater
+Recip_Counts <- Reciprocal_IR %>%
+  group_by(SeasonMatchNumber, Rater, ReciprocityType) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = ReciprocityType, values_from = Count, values_fill = 0)
+
+icc_data_recip <- Recip_Counts %>%
+  select(SeasonMatchNumber, Rater, Reciprocal) %>%
+  pivot_wider(names_from = Rater, values_from = Reciprocal)
+
+icc_result_recip <- icc(icc_data_recip[,-1], model = "twoway", type = "agreement", unit = "single")
+
+print(icc_result_recip)
+
+icc_data_nonrecip <- Recip_Counts %>%
+  select(SeasonMatchNumber, Rater, NonReciprocal) %>%
+  pivot_wider(names_from = Rater, values_from = NonReciprocal)
+
+icc_result_nonrecip <- icc(icc_data_nonrecip[,-1], model = "twoway", type = "agreement", unit = "single")
+
+print(icc_result_nonrecip)
+
+#Make some charts
+
+# Filter for reciprocal touches
+recip_counts_plot <- Reciprocal_IR %>%
+  filter(ReciprocityType == "Reciprocal") %>%
+  group_by(SeasonMatchNumber, Rater) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Plot
+recip_plot <- ggplot(recip_counts_plot, aes(x = factor(SeasonMatchNumber), y = Count, fill = Rater)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Reciprocal Touch Count per Match by Rater",
+    x = "Season Match Number",
+    y = "Reciprocal Touch Count"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Filter for non-reciprocal touches
+nonrecip_counts_plot <- Reciprocal_IR %>%
+  filter(ReciprocityType == "NonReciprocal") %>%
+  group_by(SeasonMatchNumber, Rater) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Plot
+Nonrecip_plot <- ggplot(nonrecip_counts_plot, aes(x = factor(SeasonMatchNumber), y = Count, fill = Rater)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Non-Reciprocal Touch Count per Match by Rater",
+    x = "Season Match Number",
+    y = "Non-Reciprocal Touch Count"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+##########Global
+# Total: Keep everything except TA, CO, NEG (but DO allow "IT")
+Interrater_Total <- Touches_interrater %>%
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation)) %>%
+  group_by(Rater) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  mutate(TouchType = "Total")
+
+# Recip / NonRecip: Apply stricter filter (exclude IT)
+Interrater_RecipFiltered <- Touches_interrater %>%
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation_IT)) %>%
+  mutate(
+    Reciprocity = str_trim(Reciprocal),
+    TouchType = case_when(
+      Reciprocity %in% c("Y", "G") ~ "Reciprocal",
+      Reciprocity == "N" ~ "NonReciprocal",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(!is.na(TouchType))
+
+Interrater_Specific <- Interrater_RecipFiltered %>%
+  group_by(Rater, TouchType) %>%
+  summarise(Count = n(), .groups = "drop")
+
+# Combine all
+Global_Touch_Summary <- bind_rows(Interrater_Total, Interrater_Specific) %>%
+  mutate(TouchType = factor(TouchType, levels = c("Total", "Reciprocal", "NonReciprocal")))
+
+global_icc_plot <- ggplot(Global_Touch_Summary, aes(x = TouchType, y = Count, fill = Rater)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Global Comparison of Touch Counts by Rater (Filtered Reciprocities Only)",
+    x = "Touch Type",
+    y = "Total Count",
+    fill = "Rater"
+  ) +
+  theme_minimal()
+
+##ICC Table
+
+# Build total count per match/rater
+icc_data_total <- Touches_interrater %>%
+  filter(!(HapticRitual %in% Exclude_Touch)) %>%
+  filter(!(Situation %in% Exclude_Situation)) %>%  # NOTE: only GF, GA, SUB excluded (not IT)
+  group_by(SeasonMatchNumber, Rater) %>%
+  summarise(Count = n(), .groups = "drop") %>%
+  pivot_wider(names_from = Rater, values_from = Count)
+
+# Already done earlier:
+icc_result_total <- icc(icc_data_total[,-1], model = "twoway", type = "agreement", unit = "single")
+icc_result_recip <- icc(icc_data_recip[,-1], model = "twoway", type = "agreement", unit = "single")
+icc_result_nonrecip <- icc(icc_data_nonrecip[,-1], model = "twoway", type = "agreement", unit = "single")
+
+# Extract results into a data frame
+icc_summary <- tibble(
+  TouchType = c("Total", "Reciprocal", "NonReciprocal"),
+  ICC = c(icc_result_total$value, icc_result_recip$value, icc_result_nonrecip$value),
+  Lower_CI = c(icc_result_total$lbound, icc_result_recip$lbound, icc_result_nonrecip$lbound),
+  Upper_CI = c(icc_result_total$ubound, icc_result_recip$ubound, icc_result_nonrecip$ubound)
+)
+
+library(knitr)
+library(kableExtra)
+
+icc_summary %>%
+  mutate(across(where(is.numeric), round, 3)) %>%
+  kable(caption = "ICC Values by Touch Type", align = "c") %>%
+  kable_styling(full_width = FALSE)
+
+
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 interrater_plot
+icc_result
+
 ```
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
-icc_result
+icc_result_recip
+recip_plot
+
+icc_result_nonrecip
+Nonrecip_plot
+
+global_icc_plot
+
+icc_summary %>%
+  mutate(across(where(is.numeric), round, 3)) %>%
+  kable(caption = "ICC Values by Touch Type", align = "c") %>%
+  kable_styling(full_width = FALSE)
 
 ```
 
