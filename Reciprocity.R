@@ -15,6 +15,10 @@ library(ggplot2)
 library(forcats)
 library(ggridges)
 library(DescTools)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(stringr)
 
 source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
 source("Overview_summary_Data.R") #Runs and brings in data frames from Core_Hypothesis.R script
@@ -25,68 +29,7 @@ if (!exists("Touches_final") | !exists("Touches_scaled") | !exists("Matches_fina
   stop("Touches_final, Matches_final, Touhe_CoreHyp or FinalStandings not loaded.")
 }
 
-
-############################ Reciprocal/Non-Reciprocal | Social Network Strength ############################
-
-#Reciprocal vs non-reciprocal touch | simple final standings to ratio of reciprocal/non-reciprocal
-
-Reciprocity_by_Team <- Touches_ReciprocalNonRecip %>%
-  filter(!is.na(Reciprocity_Group)) %>%               # Filter out NA if any
-  group_by(Team, Reciprocity_Group) %>%
-  summarise(TouchCount = n(), .groups = "drop") %>%
-  pivot_wider(names_from = Reciprocity_Group, values_from = TouchCount, values_fill = 0) %>%
-  mutate(
-    Reciprocal_To_NonRecip_Ratio = Reciprocal / NonReciprocal,
-    DataFlag = if_else(Reciprocal + NonReciprocal == 0, "No Touch Data", "Data Available")
-  )
-
-#Join with Final Standings
-Reciprocal_vs_Rank <- FinalStandings %>%
-  mutate(TeamID = str_pad(as.character(TeamID), width = 2, pad = "0")) %>%
-  left_join(Reciprocity_by_Team, by = c("TeamID" = "Team"))
-
-#Visualize the reciprocity ratio by team
-ratio_histo <- ggplot(Reciprocity_by_Team, aes(x = Reciprocal_To_NonRecip_Ratio)) +
-  geom_histogram(bins = 30, fill = "gray", color = "black") +
-  labs(title = "Distribution of Reciprocal to NonReciprocal Ratio")
-
-#Plot
-Reciprocal_vs_Rank_Plot <- ggplot(Reciprocal_vs_Rank, aes(x = Rank, y = Reciprocal_To_NonRecip_Ratio)) +
-  geom_point(size = 3, color = "steelblue") +  # all teams shown in one color
-  geom_smooth(
-    data = filter(Reciprocal_vs_Rank, !is.na(Reciprocal_To_NonRecip_Ratio)),
-    aes(x = Rank, y = Reciprocal_To_NonRecip_Ratio),
-    method = "lm", se = FALSE, color = "black"
-  ) +
-  scale_x_reverse(breaks = 1:max(Reciprocal_vs_Rank$Rank)) +
-  labs(
-    title = "Reciprocal Touch Ratio vs Final Season Rank per Team",
-    subtitle = "Higher ratios may reflect stronger intra-team cohesion",
-    caption = "Note: Each dot represents one team",
-    x = "Team Final Season Rank",
-    y = "Team Touch Ratio (Reciprocal : Non-Reciprocal)",
-  ) +
-  theme_minimal()
-
-# check normality --> parametric
-ratio_parametric <- shapiro.test(Reciprocity_by_Team$Reciprocal_To_NonRecip_Ratio)
-
-#Stats Sum
-ratio_recip_pearson_result <- cor.test(
-  Reciprocal_vs_Rank$Reciprocal_To_NonRecip_Ratio,
-  Reciprocal_vs_Rank$Rank,
-  method = "pearson"
-)
-
-#Statistical Significance! Note the use of a ratio, therefore I didn't feel the need to filter for run of play etc
-
-######### What about in Run of Play? When I look at GF, GA, and SUBs excluded? ##########
-
-library(dplyr)
-library(tidyr)
-library(ggplot2)
-library(stringr)
-
+############################ Reciprocal/Non-Reciprocal ############################
 # Define situations to exclude
 exclude_situations <- c("GF", "GA", "SUB")
 
@@ -102,19 +45,24 @@ Reciprocity_by_Team_filtered <- Touches_ReciprocalNonRecip %>%
     DataFlag = if_else(Reciprocal + NonReciprocal == 0, "No Touch Data", "Data Available")
   )
 
+lollipop_season_recip_byteam_plot <- ggplot(Reciprocity_by_Team_filtered %>% filter(DataFlag == "Data Available"), 
+       aes(x = reorder(Team, Reciprocal_To_NonRecip_Ratio), y = Reciprocal_To_NonRecip_Ratio)) +
+  geom_segment(aes(xend = Team, y = 0, yend = Reciprocal_To_NonRecip_Ratio), color = "gray70") +
+  geom_point(color = "steelblue", size = 4) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  coord_flip() +
+  labs(
+    title = "Reciprocal to Nonreciprocal Touch Ratio by Team (Season Aggregate)",
+    x = "Team",
+    y = "Reciprocal / Nonreciprocal Touch Ratio"
+  ) +
+  theme_minimal()
+
 # Join with Final Standings to get rank info
 Reciprocal_vs_Rank_filtered <- FinalStandings %>%
   mutate(TeamID = str_pad(as.character(TeamID), width = 2, pad = "0")) %>%
   left_join(Reciprocity_by_Team_filtered, by = c("TeamID" = "Team")) %>%
   filter(DataFlag == "Data Available")  # Optional: exclude teams with no data
-
-# Plot histogram of reciprocal to nonreciprocal ratio
-ratio_histo_filtered <- ggplot(Reciprocal_vs_Rank_filtered, aes(x = Reciprocal_To_NonRecip_Ratio)) +
-  geom_histogram(bins = 30, fill = "gray70", color = "black") +
-  labs(title = "Distribution of Reciprocal to NonReciprocal Ratio (Filtered Situations)",
-       x = "Reciprocal to NonReciprocal Ratio",
-       y = "Count") +
-  theme_minimal()
 
 # Plot reciprocal ratio vs final season rank
 Reciprocal_vs_Rank_Plot_filtered <- ggplot(Reciprocal_vs_Rank_filtered, aes(x = Rank, y = Reciprocal_To_NonRecip_Ratio)) +
@@ -140,7 +88,7 @@ ratio_recip_pearson_result_filtered <- cor.test(
   method = "pearson"
 )
 
-# No longer statistically significant, suggesting that the reciprocal/nonreciprocal ratio is linked
+# Not statistically significant, suggesting that the reciprocal/nonreciprocal ratio is linked
 # to the GF, SUBs, and GA situations. 
 # What is going on here? Perhaps GF, GA, and SUB all have high reciprocal touch 
 # Step 1 & 2: Summarize counts and proportions by Situation and Reciprocity_Group
@@ -243,143 +191,6 @@ nonrecip_touch_vs_rank_plot <- ggplot(NonRecip_vs_rank, aes(x = Rank, y = NonRec
 
 #### Reciprocal touches seem meaningfully associated with better performance, while nonrecip touches do not
 
-# GA has such few touches, going to exclude from the scaling
-# Scale for "goals for" and subs
-
-# Calculate scaling factors for each team as their goals/subs relative to the league average,
-# to normalize for differences in team performance and allow fair comparison of touch metrics.
-
-# Count total substitutions per team
-subs_count <- subs_exploded %>%
-  group_by(TeamID) %>%
-  summarise(TotalSubs = n(), .groups = "drop")
-
-# Extract season goals scored per team
-goals_per_team <- FinalStandings %>%
-  select(TeamID, SeasonGoalsFor) %>%
-  mutate(TeamID = as.character(TeamID))  # Ensure consistent type for join
-
-# Combine substitutions count with goals scored
-team_summary_GF_SUB <- subs_count %>%
-  full_join(goals_per_team, by = "TeamID") %>%
-  mutate(TotalSubs = if_else(is.na(TotalSubs), 0L, TotalSubs))
-
-# Calculate league averages for GoalsFor and Subs
-league_averages <- team_summary_GF_SUB %>%
-  summarise(
-    avg_goals_for = mean(SeasonGoalsFor, na.rm = TRUE),
-    avg_subs = mean(TotalSubs, na.rm = TRUE)
-  )
-
-# Add scaling factors to each team: team value divided by league average
-team_scaled_GF_SUB <- team_summary_GF_SUB %>%
-  mutate(
-    Scale_GoalsFor = SeasonGoalsFor / league_averages$avg_goals_for,
-    Scale_Subs = TotalSubs / league_averages$avg_subs
-  )
-
-#creating scaling denominator
-team_scaled_GF_SUB <- team_scaled_GF_SUB %>%
-  mutate(
-    ScalingDenominator = Scale_GoalsFor + Scale_Subs + 1
-  )
-
-# Join scaling factors to reciprocal touches dataframe
-Recip_vs_rank_scaled <- Recip_vs_rank %>%
-  left_join(team_scaled_GF_SUB %>% select(TeamID, ScalingDenominator), by = c("TeamID")) %>%
-  mutate(
-    Scaled_Reciprocal = Reciprocal / ScalingDenominator
-  )
-
-# Now you can check correlation with rank using scaled reciprocal touches
-cor_scaled_recip <- cor.test(Recip_vs_rank_scaled$Scaled_Reciprocal, Recip_vs_rank_scaled$Rank, method = "spearman")
-
-# Plot scaled reciprocal touches vs rank
-recip_scaled_touch_vs_rank_plot <- ggplot(Recip_vs_rank_scaled, aes(x = Rank, y = Scaled_Reciprocal)) +
-  geom_point(color = "darkgreen", size = 3) +
-  geom_smooth(method = "lm", se = FALSE, color = "forestgreen") +
-  scale_x_reverse(breaks = 1:max(Recip_vs_rank_scaled$Rank)) +
-  labs(
-    title = "Scaled Reciprocal Touches vs Final Season Rank",
-    x = "Final Season Rank (1 = Best)",
-    y = "Scaled Reciprocal Touches"
-  ) +
-  theme_minimal()
-
-#### nothing here. not statistically significant 
-
-########################### Inter-match #############################3
-#### Look at match level? ### More reciprocal or non recip touch is higher goal differntial, have to filter!
-
-# Filter reciprocal touches excluding GF, GA, SUB
-Reciprocal_Touches_filtered <- Touches_ReciprocalNonRecip %>%
-  filter(Reciprocity_Group == "Reciprocal") %>%
-  filter(!Situation %in% c("GF", "GA", "SUB"))
-
-# Count reciprocal touches per team per match
-Reciprocal_touch_per_match <- Reciprocal_Touches_filtered %>%
-  group_by(Team, SeasonMatchNumber) %>%
-  summarise(ReciprocalTouchCount = n(), .groups = "drop")
-
-# Join with Matches_finalID for GoalDiff
-RecipTouch_GoalDiff <- Reciprocal_touch_per_match %>%
-  left_join(Matches_finalID %>% select(SeasonMatchNumber, TeamID, GoalDiff),
-            by = c("SeasonMatchNumber", "Team" = "TeamID"))
-
-# Plot
-RecipTouch_GoalDiff_plot <- ggplot(RecipTouch_GoalDiff, aes(x = ReciprocalTouchCount, y = GoalDiff)) +
-  geom_point(alpha = 0.7, size = 2, color = "steelblue") +
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
-  labs(
-    title = "Reciprocal Touch Count vs Match Goal Differential (Filtered Situations)",
-    x = "Reciprocal Touch Count (Excluding GF, GA, SUB)",
-    y = "Goal Differential (Goals For - Goals Against)",
-    caption = "Each point = one team in one match"
-  ) +
-  theme_minimal()
-
-# Spearman correlation test
-spearman_result_recip_goaldiff <- cor.test(
-  RecipTouch_GoalDiff$ReciprocalTouchCount,
-  RecipTouch_GoalDiff$GoalDiff,
-  method = "spearman"
-)
-
-# Filter nonreciprocal touches excluding GF, GA, SUB
-NonReciprocal_Touches_filtered <- Touches_ReciprocalNonRecip %>%
-  filter(Reciprocity_Group == "NonReciprocal") %>%
-  filter(!Situation %in% c("GF", "GA", "SUB"))
-
-# Count nonreciprocal touches per team per match
-NonReciprocal_touch_per_match <- NonReciprocal_Touches_filtered %>%
-  group_by(Team, SeasonMatchNumber) %>%
-  summarise(NonReciprocalTouchCount = n(), .groups = "drop")
-
-# Join with Matches_finalID for GoalDiff
-NonRecipTouch_GoalDiff <- NonReciprocal_touch_per_match %>%
-  left_join(Matches_finalID %>% select(SeasonMatchNumber, TeamID, GoalDiff),
-            by = c("SeasonMatchNumber", "Team" = "TeamID"))
-
-# Plot
-NonRecipTouch_GoalDiff_plot <- ggplot(NonRecipTouch_GoalDiff, aes(x = NonReciprocalTouchCount, y = GoalDiff)) +
-  geom_point(alpha = 0.7, size = 2, color = "firebrick") +
-  geom_smooth(method = "lm", se = FALSE, color = "black") +
-  labs(
-    title = "NonReciprocal Touch Count vs Match Goal Differential (Filtered Situations)",
-    x = "NonReciprocal Touch Count (Excluding GF, GA, SUB)",
-    y = "Goal Differential (Goals For - Goals Against)",
-    caption = "Each point = one team in one match"
-  ) +
-  theme_minimal()
-
-# Spearman correlation test
-spearman_result_nonrecip_goaldiff <- cor.test(
-  NonRecipTouch_GoalDiff$NonReciprocalTouchCount,
-  NonRecipTouch_GoalDiff$GoalDiff,
-  method = "spearman"
-)
-
-# both are statistically significant. 
 # ratio
 
 library(dplyr)
@@ -396,6 +207,30 @@ touches_per_match_ratio <- filtered_touches_recip_nonrecip %>%
   summarise(TouchCount = n(), .groups = "drop") %>%
   pivot_wider(names_from = Reciprocity_Group, values_from = TouchCount, values_fill = 0) %>%
   mutate(Recip_NonRecip_Ratio = Reciprocal / NonReciprocal)
+
+# Join rank info to your per-match data
+touches_per_match_ranked <- touches_per_match_ratio %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID"))
+
+# Convert Team to factor ordered by Rank
+touches_per_match_ranked <- touches_per_match_ranked %>%
+  mutate(Team = factor(Team, levels = FinalStandings %>% arrange(Rank) %>% pull(TeamID)))
+
+# Create factor levels ordered by rank ascending, then reverse them
+touches_per_match_ranked <- touches_per_match_ranked %>%
+  mutate(Team = factor(Team, levels = rev(FinalStandings %>% arrange(Rank) %>% pull(TeamID))))
+
+# Now plot using this ordered factor
+ggplot(touches_per_match_ranked, aes(x = Team, y = Recip_NonRecip_Ratio)) +
+  geom_boxplot(fill = "lightblue", outlier.colour = "red", outlier.size = 2) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red") +
+  labs(
+    title = "Per Match Spread of Reciprocal to Nonreciprocal Touch Ratios by Team (Ordered by End of Season Rank)",
+    x = "Team (Ordered by Rank)",
+    y = "Reciprocal / Nonreciprocal Touch Ratio"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 # Join with Matches_finalID to get goal differential
 touches_ratio_goaldiff <- touches_per_match_ratio %>%

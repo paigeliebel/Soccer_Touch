@@ -59,9 +59,6 @@ Touches_NonSocial <- Touches_final %>%
 social_count <- nrow(Touches_ProSocial)
 nonsocial_count <- nrow(Touches_NonSocial)
 
-cat("Number of Prosocial (Social) Touches:", social_count, "\n")
-cat("Number of NonSocial Touches:", nonsocial_count, "\n")
-
 #Excluding goal for/against, substitutions (starting with prosocial set)
 Exclude_Situation <- c("GF", "GA", "SUB") 
 
@@ -85,6 +82,7 @@ Touches_ReciprocalNonRecip <- Touches_ProSocial %>%
 
 #Define Reciprocity
 Touches_ReciprocalNonRecip <- Touches_ReciprocalNonRecip %>%
+  filter(!(Situation %in% Exclude_Situation)) %>%   # exclude GF, GA, SUB situations
   mutate(
     Reciprocity_Group = case_when(
       Reciprocity %in% c("Y", "G") ~ "Reciprocal",
@@ -116,8 +114,8 @@ touch_summary_fowchart <- tibble(
     "NonSocial Touches",
     "Prosocial: Run of Play",
     "Prosocial: Goals For, Goals Against, Sub",
-    "Prosocial: Reciprocal",
-    "Prosocial: NonReciprocal"
+    "Prosocial & Run of Play: Reciprocal",
+    "Prosocial & Run of Play: NonReciprocal"
   ),
   Count = c(
     nrow(Touches_final),
@@ -188,7 +186,7 @@ ByTeam_Total_Touch_Instance_Unfiltered <- Touches_Summary %>%
   rename(TeamID = Team)
 
 TeamMatchCounts_Unfiltered <- TeamMatchCounts %>%
-  left_join(ByTeam_Total_Touch_Instance_unfiltered, 
+  left_join(ByTeam_Total_Touch_Instance_Unfiltered, 
             by = c("TeamID" = "TeamID"))
 
 unfiltered <- TeamMatchCounts_Unfiltered %>%
@@ -301,8 +299,7 @@ touches_per_match_parametric <- shapiro.test(Touches_per_match$TouchCount)
 
 #By team explosion of histograms
 FinalStandings <- FinalStandings %>%
-  mutate(TeamID = str_pad(as.character(TeamID), width = 2, pad = "0")) %>%
-  rename(TeamName = Team) 
+  mutate(TeamID = str_pad(as.character(TeamID), width = 2, pad = "0"))
 
 Touches_per_match_team <- Touches_per_match %>%
   left_join(FinalStandings %>% select(TeamID, TeamName), 
@@ -338,6 +335,11 @@ touch_permatch_ridgelineplot <- ggplot(Touches_per_match, aes(x = TouchCount, y 
   ) +
   theme_minimal() +
   theme(legend.position = "none")
+
+Touches_per_game_ranked <- Touches_per_match %>%
+  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID")) %>%
+  arrange(Rank) %>%
+  mutate(Rank = as.factor(Rank))
 
 #Same thing but ordered by final rank
 # Visualize with boxplots 
