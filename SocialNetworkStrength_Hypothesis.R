@@ -29,7 +29,7 @@ if (!exists("Touches_final") | !exists("Touches_scaled") | !exists("Matches_fina
 
 #Creates Dataframe that Flags values that don't match with requirements of strings, jersey numbers, G, SU, ??
 #Cleans common typos (which were many)
-Touches_players_flagged <- Touches_final %>%
+Touches_players_flagged <- Touches_ProSocial %>%
   mutate(
     ToucherNumber = as.character(ToucherNumber),
     ToucheeNumber = as.character(ToucheeNumber),
@@ -57,6 +57,7 @@ Touches_players_flagged <- Touches_final %>%
       all_valid && has_multiple
     })
   )
+
 #Splits "12,04,09" back into "12, 04, 09"
 Touches_players_flagged <- Touches_players_flagged %>%
   mutate(PlayersInvolved = str_split(PlayersInvolved, ","))
@@ -75,11 +76,11 @@ Touches_players_final <- Touches_players_flagged %>%
 
 # Count number of times each player was the Toucher within each team
 toucher_counts <- Touches_players_final %>%
-  filter(!is.na(ToucherNumber) & ToucherNumber != "G") %>%
+  filter(!is.na(ToucherNumber) & ToucherNumber != "G" & Reciprocal == "N") %>%
   group_by(Team, ToucherNumber) %>%
   summarise(TouchCount = n(), .groups = "drop")
 
-ggplot(toucher_counts, aes(x = ToucherNumber, y = TouchCount)) +
+toucher_histo <- ggplot(toucher_counts, aes(x = ToucherNumber, y = TouchCount)) +
   geom_col(fill = "steelblue") +
   facet_wrap(~ Team, scales = "free_x") +
   labs(
@@ -93,15 +94,35 @@ ggplot(toucher_counts, aes(x = ToucherNumber, y = TouchCount)) +
     strip.text = element_text(face = "bold")
   )
 
+toucher_team_gini <- toucher_counts %>%
+  group_by(Team) %>%
+  summarise(Gini = Gini(TouchCount)) %>%
+  arrange(desc(Gini))
+
+# Use Gini order for Team factor levels
+toucher_counts <- toucher_counts %>%
+  mutate(Team = factor(Team, levels = toucher_team_gini$Team))
+
+# Plot with teams ordered by Gini (highest concentration at top)
+Toucher_plot_gini_ordered <- ggplot(toucher_counts, aes(x = TouchCount, y = Team, fill = Team)) +
+  geom_density_ridges(alpha = 0.7, scale = 1) +
+  labs(
+    title = "Distribution of Toucher Counts per Player by Team (Ordered by Gini Coefficient)",
+    x = "Number of Touches",
+    y = "Team (High to Low Concentration)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
 #########Histograms for Touchee by team (creates 14 histograms for team by team analysis)
 
 # Count number of times each player was the Touchee within each team
 touchee_counts <- Touches_players_final %>%
-  filter(!is.na(ToucheeNumber) & ToucheeNumber != "G") %>%
+  filter(!is.na(ToucheeNumber) & ToucheeNumber != "G" & Reciprocal == "N") %>%
   group_by(Team, ToucheeNumber) %>%
   summarise(TouchCount = n(), .groups = "drop")
 
-ggplot(touchee_counts, aes(x = ToucheeNumber, y = TouchCount)) +
+Touchee_histo <- ggplot(touchee_counts, aes(x = ToucheeNumber, y = TouchCount)) +
   geom_col(fill = "steelblue") +
   facet_wrap(~ Team, scales = "free_x") +
   labs(
@@ -115,6 +136,110 @@ ggplot(touchee_counts, aes(x = ToucheeNumber, y = TouchCount)) +
     strip.text = element_text(face = "bold")
   )
 
+# Calculate Gini coefficient for touchee counts per team
+touchee_team_gini <- touchee_counts %>%
+  group_by(Team) %>%
+  summarise(Gini = Gini(TouchCount)) %>%
+  arrange(desc(Gini))
+
+# Order Team factor by touchee Gini (descending)
+touchee_counts <- touchee_counts %>%
+  mutate(Team = factor(Team, levels = touchee_team_gini$Team))
+
+# Ridge plot for touchee counts ordered by Gini
+Touchee_plot_gini_ordered <- ggplot(touchee_counts, aes(x = TouchCount, y = Team, fill = Team)) +
+  geom_density_ridges(alpha = 0.7, scale = 1) +
+  labs(
+    title = "Distribution of Touchee Counts per Player by Team (Ordered by Gini Coefficient)",
+    x = "Number of Touches",
+    y = "Team (High to Low Concentration)"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+############# Touchee vs Toucher involvement league wide ##################333
+
+# Combine toucher and touchee counts per player and team
+combined_counts <- toucher_counts %>%
+  rename(Player = ToucherNumber, ToucherCount = TouchCount) %>%
+  full_join(
+    touchee_counts %>% rename(Player = ToucheeNumber, ToucheeCount = TouchCount),
+    by = c("Team", "Player")
+  ) %>%
+  mutate(
+    ToucherCount = replace_na(ToucherCount, 0),
+    ToucheeCount = replace_na(ToucheeCount, 0),
+    TotalTouches = ToucherCount + ToucheeCount
+  ) %>%
+  filter(TotalTouches >= 10)  # filter players with 10 or more combined touches
+
+# Scatter plot league-wide
+Toucher_v_Touchee_plot_global <- ggplot(combined_counts, aes(x = ToucheeCount, y = ToucherCount)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  labs(
+    title = "League-wide Player Touch Counts: Touchee vs. Toucher",
+    x = "Touchee Count (Touches Received)",
+    y = "Toucher Count (Touches Initiated)"
+  ) +
+  theme_minimal()
+
+combined_counts_team <- toucher_counts %>%
+  rename(Player = ToucherNumber, ToucherCount = TouchCount) %>%
+  full_join(
+    touchee_counts %>% rename(Player = ToucheeNumber, ToucheeCount = TouchCount),
+    by = c("Team", "Player")
+  ) %>%
+  mutate(
+    ToucherCount = replace_na(ToucherCount, 0),
+    ToucheeCount = replace_na(ToucheeCount, 0),
+    TotalTouches = ToucherCount + ToucheeCount
+  ) %>%
+  filter(TotalTouches >= 10)  # keep only active players
+
+Toucher_v_Touchee_plot_team <- ggplot(combined_counts_team, aes(x = ToucheeCount, y = ToucherCount)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  facet_wrap(~ Team, scales = "free") +
+  labs(
+    title = "Player Touch Counts: Touchee vs. Toucher by Team (≥10 touches)",
+    x = "Touchee Count (Touches Received)",
+    y = "Toucher Count (Touches Initiated)"
+  ) +
+  theme_minimal()
+
+team_correlations_touchervtouchee <- combined_counts %>%
+  group_by(Team) %>%
+  summarise(
+    cor = cor(ToucheeCount, ToucherCount, method = "pearson")
+  ) %>%
+  arrange(desc(cor))
+
+combined_counts_ratio <- toucher_counts %>%
+  rename(Player = ToucherNumber, ToucherCount = TouchCount) %>%
+  full_join(
+    touchee_counts %>% rename(Player = ToucheeNumber, ToucheeCount = TouchCount),
+    by = c("Team", "Player")
+  ) %>%
+  mutate(
+    ToucherCount = replace_na(ToucherCount, 0),
+    ToucheeCount = replace_na(ToucheeCount, 0),
+    TotalTouches = ToucherCount + ToucheeCount,
+    RoleRatio = (ToucherCount + 1) / (ToucheeCount + 1)
+  ) %>%
+  filter(TotalTouches >= 10)  # focus on active players
+
+combined_ratios_plot <- ggplot(combined_counts_ratio, aes(x = Team, y = RoleRatio)) +
+  geom_boxplot() +
+  labs(
+    title = "Distribution of Player Role Ratios by Team",
+    x = "Team",
+    y = "Toucher / Touchee Ratio"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_hline(yintercept = 1, linetype = "dashed", color = "red")  # line at balanced ratio
+
 #########Histograms for players involved in any touch event, as toucher, touchee or group (creates 14 histograms for team by team analysis)
 
 # Properly split and unnest
@@ -127,7 +252,15 @@ player_counts <- Touches_players_final %>%
   summarise(TouchCount = n(), .groups = "drop") %>%
   arrange(Team, desc(TouchCount))
 
-ggplot(player_counts, aes(x = fct_reorder(PlayersInvolved, -TouchCount), y = TouchCount)) +
+player_gini <- player_counts %>%
+  group_by(Team) %>%
+  summarise(Gini = Gini(TouchCount)) %>%
+  arrange(desc(Gini))
+
+player_counts <- player_counts %>%
+  mutate(Team = factor(Team, levels = player_gini$Team))
+
+player_involved_histo <- ggplot(player_counts, aes(x = fct_reorder(PlayersInvolved, -TouchCount), y = TouchCount)) +
   geom_col(fill = "steelblue") +
   facet_wrap(~ Team, scales = "free_x") +
   labs(
@@ -142,246 +275,78 @@ ggplot(player_counts, aes(x = fct_reorder(PlayersInvolved, -TouchCount), y = Tou
     strip.text = element_text(face = "bold")
   )
 
-#Using the shrinkage factor
-# player_touch_shrink_clean <- player_touch_shrink %>%
-#   filter(!is.na(Player), !is.na(AdjustedTouches))
-# 
-# ggplot(player_touch_shrink_clean, aes(x = fct_reorder(Player, -AdjustedTouches), y = AdjustedTouches)) +
-#   geom_col(fill = "steelblue") +
-#   facet_wrap(~ Team, scales = "free_x") +
-#   labs(
-#     title = "Shrinkage-Weighted Player Touch Involvement",
-#     subtitle = "Touch involvement scaled by log1p(Minutes Played)",
-#     x = "Player Jersey",
-#     y = "Adjusted Touch Involvement"
-#   ) +
-#   theme_minimal() +
-#   theme(
-#     axis.text.x = element_text(angle = 90, vjust = 0.5, size = 8),
-#     strip.text = element_text(face = "bold")
-#   )
-
-#########Histograms for players involved in group events by team (creates 14 histograms for team by team analysis)
-
-#Filters for just rows that contain the "G"
-group_touches <- Touches_players_final %>%
-  filter(ToucherNumber == "G")
-
-player_counts_groupsanalysis <- group_touches %>%
-  select(Team, PlayersInvolved, ToucherNumber) %>%
-  separate_rows(PlayersInvolved, sep = ",\\s*") %>%
-  mutate(PlayersInvolved = str_trim(PlayersInvolved)) %>%
-  filter(PlayersInvolved != "") %>%
-  group_by(Team, PlayersInvolved) %>%
-  summarise(TouchCount = n(), .groups = "drop") %>%
-  arrange(Team, desc(TouchCount))
-
-#Plots
-ggplot(player_counts_groupsanalysis, aes(x = PlayersInvolved, y = TouchCount)) +
-  geom_col(fill = "steelblue") +
-  facet_wrap(~ Team, scales = "free_x") +
+player_involved_ridgeplot <- ggplot(player_counts, aes(x = TouchCount, y = Team, fill = Team)) +
+  geom_density_ridges(alpha = 0.7, scale = 1) +
   labs(
-    title = "Player Involvement in Group Events (Touches_final)",
-    subtitle = "Each bar shows a player's total involvement in group touches",
-    x = "Player Jersey",
-    y = "Group Touch Count"
+    title = "Distribution of Player Touch Involvement by Team (Ordered by Gini)",
+    x = "Touch Count (Player Involvement)",
+    y = "Team"
   ) +
   theme_minimal() +
-  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+  theme(legend.position = "none")
 
-#########Ridge plot that shows touchiest players stacked on top of each other by team (one plot for all 14 teams)
-
-# Build long-format player count data (from cleaned PlayersInvolved)
-player_ridgeplot_counts <- Touches_players_final %>%
-  select(Team, PlayersInvolved) %>%
-  separate_rows(PlayersInvolved, sep = ",\\s*") %>%
-  mutate(PlayersInvolved = str_trim(PlayersInvolved)) %>%
-  filter(PlayersInvolved != "") %>%
-  group_by(Team, PlayersInvolved) %>%
-  summarise(TouchCount = n(), .groups = "drop")
-
-# Assign within-team ranks (1 = most touchy)
-player_ridgeplot_counts <- player_ridgeplot_counts %>%
+#What Anne asked for:
+# 1. Calculate team mean touch count
+player_counts_mean <- player_counts %>%
   group_by(Team) %>%
-  arrange(desc(TouchCount)) %>%
-  mutate(
-    TouchiestRank = row_number()  # Numeric: 1 = most touchy
-  ) %>%
+  mutate(TeamMeanTouch = mean(TouchCount)) %>%
   ungroup()
 
-# Calculate standard deviation of TouchCount per team
-team_SD <- player_ridgeplot_counts %>%
+# Calculate relative touch count per player (touches minus team mean)
+player_counts_mean <- player_counts_mean %>%
+  mutate(TouchCount_relative = TouchCount - TeamMeanTouch)
+
+# Optional: reorder teams by Gini or other metric
+player_gini <- player_counts_mean %>%
   group_by(Team) %>%
-  summarise(TouchSD = sd(TouchCount), .groups = "drop")
+  summarise(Gini = Gini(TouchCount)) %>%
+  arrange(desc(Gini))
 
-# Step 2: Reorder Team factor based on flatness (ascending)
-player_ridgeplot_counts <- player_ridgeplot_counts %>%
-  left_join(team_SD, by = "Team") %>%
-  mutate(Team = fct_reorder(Team, TouchSD, .desc = FALSE))  # flattest first
+player_counts_mean <- player_counts_mean %>%
+  mutate(Team = factor(Team, levels = player_gini$Team))
 
-# Plot ridge plot using numeric ranks
-ggplot(player_ridgeplot_counts, aes(x = TouchiestRank, y = fct_rev(Team), height = TouchCount, group = Team)) +
-  geom_ridgeline(stat = "identity", fill = "steelblue", color = "white", alpha = 0.8, scale = 0.9) +
-  scale_x_continuous(breaks = 1:50, expand = c(0.01, 0)) +
+# Plot ridge plot with TouchCount_relative on x-axis, Team on y-axis
+player_counts_mean_plot <- ggplot(player_counts_mean, aes(x = TouchCount_relative, y = Team, fill = Team)) +
+  geom_density_ridges(alpha = 0.7, scale = 1) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +  # line at team mean
   labs(
-    title = "Player Touch Involvement Ridge Plot by Team",
-    subtitle = "Teams ordered front-to-back from flattest to most peaked touch distributions",
-    x = "Player Touch Rank within Team (1 = Most Involved)",
+    title = "Player Touch Involvement Relative to Team Mean",
+    subtitle = "Negative = below team mean, Positive = above team mean",
+    x = "Touch Count Difference from Team Mean",
     y = "Team"
   ) +
   theme_minimal() +
-  theme(
-    panel.grid.major.y = element_blank(),
-    axis.text.y = element_text(size = 8),
-    plot.title = element_text(face = "bold")
-  )
+  theme(legend.position = "none")
 
-#Unstacked Ridge plot
-ggplot(player_ridgeplot_counts, aes(x = TouchiestRank, y = Team, height = TouchCount, group = Team)) +
-  geom_density_ridges(stat = "identity", scale = 1.5, fill = "steelblue", alpha = 0.7) +
+
+
+#Compare gini coeeficient to final season standings. 
+
+player_gini <- player_gini %>%
+  mutate(Team = as.numeric(Team),
+         Team = str_trim(Team))
+
+FinalStandings <- FinalStandings %>%
+  mutate(TeamID = as.numeric(TeamID),
+         TeamID = str_trim(TeamID))
+
+# Join player involvement Gini with final standings
+gini_with_rank <- player_gini %>%
+  inner_join(FinalStandings, by = c("Team" = "TeamID"))
+
+# Scatter plot: Rank vs. Gini coefficient
+ggplot(gini_with_rank, aes(x = Rank, y = Gini)) +
+  geom_point(size = 3) +
+  geom_smooth(method = "lm", se = TRUE, color = "blue") +
+  scale_x_reverse(breaks = sort(unique(gini_with_rank$Rank))) +  # Best team on left
   labs(
-    title = "Distribution of Player Touch Involvement by Team",
-    subtitle = "Teams ordered from flattest to most peaked distribution",
-    x = "Player Touchiness Rank (1 = Most Involved)",
-    y = "Team"
-  ) +
-  theme_minimal()
-
-############################ Player Concentration | Social Network Strength to Final Standings ############################
-
-# Merge flatness, player touchiness, and season rank into player data
-player_touchiness_rank <- player_ridgeplot_counts %>%
-  mutate(Team = as.numeric(as.character(Team))) %>%
-  left_join(
-    FinalStandings %>%
-      mutate(TeamID = as.numeric(TeamID)) %>%
-      select(TeamID, Rank),
-    by = c("Team" = "TeamID")
-  )
-
-player_touchiness_rank <- player_touchiness_rank %>%
-  mutate(
-    Team = factor(Team),
-    Team = fct_reorder(Team, Rank, .desc = FALSE)  # Rank 1 at top/front
-  )
-
-#filter to only top 18 players of touchiness... tails too long
-player_touchiness_rank_top <- player_touchiness_rank %>%
-  filter(TouchiestRank <= 18)
-
-# Ridge plot (non-stacked), teams ordered by final season standings
-ggplot(player_touchiness_rank_top, aes(x = TouchiestRank, y = Team, height = TouchCount, group = Team)) +
-  geom_density_ridges(stat = "identity", scale = 1.5, fill = "steelblue", alpha = 0.7) +
-  labs(
-    title = "Distribution of Player Touch Involvement by Team",
-    subtitle = "Teams ordered by final season standings (Bottom of y-axis is 1st ranked team)",
-    x = "Player Touchiness Rank (1 = Most Involved)",
-    y = "Team"
-  ) +
-  theme_minimal() +
-  theme(
-    panel.grid.major.y = element_blank(),
-    axis.text.y = element_text(size = 8),
-    plot.title = element_text(face = "bold")
-  )
-
-#plot team flatness SD to final season rank in a simple scatter plot
-#low standard deviation = flatter distribution (single players do not dominate touch interactions)
-team_SD_rank <- team_SD %>%
-  mutate(Team = as.numeric(as.character(Team))) %>%
-  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID"))
-
-team_cv <- player_touchiness_rank_top %>%
-  mutate(Team = as.numeric(as.character(Team))) %>%
-  group_by(Team) %>%
-  summarise(
-    MeanTouches = mean(TouchCount),
-    SDTouches = sd(TouchCount),
-    CV = SDTouches / MeanTouches,
-    .groups = "drop"
-  )
-
-team_cv_rank <- team_cv %>%
-  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID"))
-
-#Look at CV (Coefficient of Variation): CV = SD / Mean -- normalized level of spread
-# Plot scatter
-ggplot(team_cv_rank, aes(x = Rank, y = CV)) +
-  geom_point(size = 3, color = "darkred") +
-  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
-  scale_x_reverse(breaks = 1:max(team_SD_rank$Rank)) +  # Lower rank = better
-  labs(
-    title = "Touch Concentration vs Final Season Rank",
-    subtitle = "Higher SD = touches concentrated in fewer players",
+    title = "Player Touch Involvement Concentration vs. Final Season Rank",
     x = "Final Season Rank (1 = Best)",
-    y = "Touch Count Standard Deviation (Per Team)"
+    y = "Gini Coefficient of Player Touch Involvement"
   ) +
   theme_minimal()
 
-cor.test(team_cv_rank$CV, team_cv_rank$Rank)
+# Calculate Spearman correlation between rank and Gini
+spearman_corr <- cor(gini_with_rank$Rank, gini_with_rank$Gini, method = "spearman")
 
-######Gini Coefficient################
-team_gini <- player_touchiness_rank %>%
-  group_by(Team) %>%
-  summarise(
-    Gini = Gini(TouchCount),
-    .groups = "drop"
-  )
-team_gini_rank <- team_gini %>%
-  mutate(Team = as.numeric(as.character(Team))) %>% 
-  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID"))
-
-ggplot(team_gini_rank, aes(x = Rank, y = Gini)) +
-  geom_point(size = 3, color = "darkgreen") +
-  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
-  scale_x_reverse(breaks = 1:max(team_gini_rank$Rank)) +  # Rank 1 = best, so reverse axis
-  labs(
-    title = "Gini Coefficient: Touch Inequality vs Final Season Rank",
-    subtitle = "Higher Gini = More touches concentrated in fewer players",
-    x = "Final Season Rank (1 = Best)",
-    y = "Gini Coefficient of Touch Distribution"
-  ) +
-  theme_minimal()
-
-summary(lm(Gini ~ Rank, data = team_gini_rank))
-
-
-#Percentage of touches from top 3 touchiest players
-# Step 1: Sum total touches per team
-team_total_touches <- player_touchiness_rank %>%
-  group_by(Team) %>%
-  summarise(TotalTouches = sum(TouchCount), .groups = "drop")
-
-# Step 2: Get top 3 players per team and their touch count
-top3_touches <- player_touchiness_rank %>%
-  group_by(Team) %>%
-  arrange(desc(TouchCount)) %>%
-  slice_head(n = 3) %>%  # top 3 players
-  summarise(Top3Touches = sum(TouchCount), .groups = "drop")
-
-# Step 3: Merge and calculate proportion
-touch_concentration <- top3_touches %>%
-  left_join(team_total_touches, by = "Team") %>%
-  mutate(Top3_Proportion = Top3Touches / TotalTouches)
-
-# Step 4 (Optional): Join with final standings to analyze relationship
-touch_concentration <- touch_concentration %>%
-  mutate(Team = as.numeric(as.character(Team))) %>%
-  left_join(FinalStandings %>% select(TeamID, Rank), by = c("Team" = "TeamID"))
-
-ggplot(touch_concentration, aes(x = Rank, y = Top3_Proportion)) +
-  geom_point(size = 3, color = "darkblue") +
-  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
-  scale_x_reverse(breaks = 1:max(touch_concentration$Rank)) +
-  labs(
-    title = "Touch Concentration in Top 3 Players vs Final Season Rank",
-    subtitle = "Higher values = more concentrated touch behavior in fewer players",
-    x = "Final Season Rank (1 = Best)",
-    y = "Proportion of Team Touches by Top 3 Players"
-  ) +
-  theme_minimal()
-
-cor.test(touch_concentration$Top3_Proportion, touch_concentration$Rank)
-
-summary(lm(Top3_Proportion ~ Rank, data = touch_concentration))
-
+# What if we do this by game? Again, with goal differential? Where a more evenly spread game (gini coefficient) could produce a better goal differential?

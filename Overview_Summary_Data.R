@@ -302,9 +302,9 @@ FinalStandings <- FinalStandings %>%
   mutate(TeamID = str_pad(as.character(TeamID), width = 2, pad = "0"))
 
 Touches_per_match_team <- Touches_per_match %>%
-  left_join(FinalStandings %>% select(TeamID, TeamName), 
+  left_join(FinalStandings %>% select(TeamID, Team), 
             by = c("Team" = "TeamID")) %>%
-  mutate(TeamLabel = paste0(Team, ": ", TeamName))
+  mutate(TeamLabel = paste0(Team, ": ", Team))
 
 touches_permatch_plot_teamlevel <- ggplot(Touches_per_match_team, aes(x = TouchCount)) +
   geom_histogram(binwidth = 5, fill = "gray60", color = "white") +

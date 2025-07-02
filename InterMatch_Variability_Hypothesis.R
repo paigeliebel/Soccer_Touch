@@ -115,4 +115,23 @@ Touch_Scaled_GoalDiff_cor_test <- cor.test(
 
 # Both Scaled and Unscaled are quite similar! Both are statistically significant.
 
+library(ggh4x)
 
+ggplot(Touch_GoalDiff_scaled_Analysis, aes(x = ScaledTouch, y = GoalDiff)) +
+  geom_point(size = 2, alpha = 0.7) +
+  geom_vline(xintercept = 0, linetype = "dotted", color = "red", size = 0.8) +
+  ggh4x::facet_wrap2(~ Team, ncol = 7, strip.position = "top", axes = "all") +
+  coord_cartesian(xlim = c(-4, 4)) +
+  labs(
+    title = "Touch Count Deviation vs Match Goal Differential by Team",
+    x = "Scaled Touch by Team Profile",
+    y = "Goal Differential",
+    caption = "Each dot represents one match outcome for a team"
+  ) +
+  theme_minimal() +
+  theme(
+    strip.text = element_text(size = 10),
+    plot.title = element_text(hjust = 0.5),
+    panel.background = element_rect(fill = "white", color = "gray30", size = 0.8),
+    panel.spacing = unit(1, "lines")
+  )
