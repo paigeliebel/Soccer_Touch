@@ -77,12 +77,8 @@ Touches_GoalsSubs <- Touches_ProSocial %>%
 coredata_count <- nrow(Touches_CoreData)
 GoalsSubs_count <- nrow(Touches_GoalsSubs)
 
-#Filter out IT and look at Reciprocity
-Exclude_IT <- c("IT")
-Touches_ReciprocalNonRecip <- Touches_CoreData %>%
-  filter(!(Situation %in% Exclude_IT))
-
-Touches_ReciprocalNonRecip <- Touches_ReciprocalNonRecip %>% 
+#Look at Reciprocity
+Touches_ReciprocalNonRecip <- Touches_ProSocial %>% 
   mutate(
     Reciprocity = str_trim(Reciprocal) #cleans up white spaces in case
   )
@@ -105,32 +101,9 @@ Reciprocal_Touches <- Touches_ReciprocalNonRecip %>%
 NonReciprocal_Touches <- Touches_ReciprocalNonRecip %>%
   filter(Reciprocity_Group == "NonReciprocal")
 
-#Look at IT touches:
-# Keep only IT touches
-Touches_IT <- Touches_CoreData %>%
-  filter(Situation %in% "IT") %>%   # keep only IT
-  mutate(
-    Reciprocity = str_trim(Reciprocal) # clean white spaces
-  ) %>%
-  mutate(
-    Reciprocity_Group = case_when(
-      Reciprocity %in% c("Y", "G") ~ "Reciprocal",
-      Reciprocity == "N" ~ "NonReciprocal",
-      TRUE ~ "Other"
-    )
-  )
-
-# Reciprocal touches within IT
-Reciprocal_IT_Touches <- Touches_IT %>%
-  filter(Reciprocity_Group == "Reciprocal")
-
-# Nonreciprocal touches within IT
-NonReciprocal_IT_Touches <- Touches_IT %>%
-  filter(Reciprocity_Group == "NonReciprocal")
-
 # Counts
-reciprocal_count <- nrow(Reciprocal_IT_Touches)
-nonreciprocal_count <- nrow(NonReciprocal_IT_Touches)
+reciprocal_count <- nrow(Reciprocal_Touches)
+nonreciprocal_count <- nrow(NonReciprocal_Touches)
 
 #Create a table for all of this: 
 library(tibble)
@@ -143,10 +116,8 @@ touch_summary_fowchart <- tibble(
     "NonSocial Touches",
     "Prosocial: Run of Play",
     "Prosocial: Goals For, Goals Against, Sub",
-    "Prosocial, Run of Play, excluding Injury Touch: Reciprocal",
-    "Prosocial, Run of Play, excluding Injury Touch: NonReciprocal",
-    "Prosocial, Run of Play, only Injury Touch: Reciprocal",
-    "Prosocial, Run of Play, only Injury Touch: NonReciprocal"
+    "Prosocial: Reciprocal",
+    "Prosocial: NonReciprocal"
   ),
   Count = c(
     nrow(Touches_final),
@@ -154,8 +125,6 @@ touch_summary_fowchart <- tibble(
     nonsocial_count,
     coredata_count,
     GoalsSubs_count,
-    nrow(Reciprocal_Touches),
-    nrow(NonReciprocal_Touches),
     reciprocal_count,
     nonreciprocal_count
   )
@@ -328,7 +297,7 @@ touches_permatch_plot <- ggplot(Touches_per_match, aes(x = TouchCount)) +
 
 touches_per_match_parametric <- shapiro.test(Touches_per_match$TouchCount)
 
-#NON-PARAMETIC! Do not use linear regression etc. uuse non-parametric alternatives.
+#NON-PARAMETIC! Do not use linear regression etc. use non-parametric alternatives.
 
 #By team explosion of histograms
 FinalStandings <- FinalStandings %>%
