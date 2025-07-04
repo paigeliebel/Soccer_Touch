@@ -24,11 +24,6 @@ source("Data_Management.R") #Runs and brings in data frames from Data_Management
 source("Overview_summary_Data.R") #Runs and brings in data frames from Core_Hypothesis.R script
 source("MatchPerformance_Stats_PK.R") #Runs abd brings in data frames from MatchPerformance and stats script
 
-#Check to make sure data frames are loaded:
-if (!exists("Touches_final") | !exists("Touches_scaled") | !exists("Matches_finalID") | !exists("FinalStandings") | !exists("Touches_CoreData")) {
-  stop("Touches_final, Matches_final, Touhe_CoreHyp or FinalStandings not loaded.")
-}
-
 ############################ Reciprocal/Non-Reciprocal ############################
 # Define situations to exclude
 exclude_situations <- c("GF", "GA", "SUB")
@@ -290,7 +285,7 @@ match_vs_season_ratio <- match_vs_season_ratio %>%
             by = c("SeasonMatchNumber", "Team" = "TeamID"))
 
 # Scatter plot with smooth line
-ggplot(match_vs_season_ratio, aes(x = Ratio_Deviation, y = GoalDiff)) +
+match_vs_season_ratio_plot <- ggplot(match_vs_season_ratio, aes(x = Ratio_Deviation, y = GoalDiff)) +
   geom_point(alpha = 0.7, color = "darkgreen") +
   geom_smooth(method = "lm", se = FALSE, color = "black") +
   labs(

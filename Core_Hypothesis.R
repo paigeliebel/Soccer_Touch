@@ -1,5 +1,4 @@
 # Core_Hypothesis
-# Added Outlier Analysis as well
 # For more information on these data frames please look at the README.md file
 
 library(tidyverse)
@@ -9,14 +8,11 @@ library(janitor)
 library(readxl)
 library(rmarkdown)
 library(readr)
-library (dplyr)
+library(dplyr)
+library(ggrepel)
+
 
 source("Overview_Summary_Data.R") #Runs and brings in data frames
-
-#Check to make sure data frames are loaded:
-if (!exists("Touches_final") | !exists("Matches_final") | !exists("FinalStandings")) {
-  stop("Touches_final, Matches_final, or FinalStandings not loaded. Check Data_Management.R.")
-}
 
 ############################ Create Data Set for this Hypothesis ############################ 
 
@@ -35,7 +31,6 @@ Team_Touches_Standings <- FinalStandings %>%
   filter(!is.na(TotalTouches))
 
 #Plot with regression line : final rankings to frequency of touch
-library(ggrepel)
 
 TouchFreq_vs_FinalStandings <- ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches)) +
   geom_point(size = 3, color = "gray30") +

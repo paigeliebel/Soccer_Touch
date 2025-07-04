@@ -20,11 +20,6 @@ source("Data_Management.R") #Runs and brings in data frames from Data_Management
 source("Overview_summary_Data.R") #Runs and brings in data frames from Core_Hypothesis.R script
 source("MatchPerformance_Stats_PK.R") #Runs abd brings in data frames from MatchPerformance and stats script
 
-#Check to make sure data frames are loaded:
-if (!exists("Touches_final") | !exists("Touches_scaled") | !exists("Matches_finalID") | !exists("FinalStandings") | !exists("Touches_CoreData")) {
-  stop("Touches_final, Matches_final, Touhe_CoreHyp or FinalStandings not loaded.")
-}
-
 ############################ Social Network Strength ############################
 
 #Creates Dataframe that Flags values that don't match with requirements of strings, jersey numbers, G, SU, ??
@@ -335,7 +330,7 @@ gini_with_rank <- player_gini %>%
   inner_join(FinalStandings, by = c("Team" = "TeamID"))
 
 # Scatter plot: Rank vs. Gini coefficient
-ggplot(gini_with_rank, aes(x = Rank, y = Gini)) +
+gini_rank_plot <- ggplot(gini_with_rank, aes(x = Rank, y = Gini)) +
   geom_point(size = 3) +
   geom_smooth(method = "lm", se = TRUE, color = "blue") +
   scale_x_reverse(breaks = sort(unique(gini_with_rank$Rank))) +  # Best team on left

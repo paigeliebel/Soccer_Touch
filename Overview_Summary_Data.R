@@ -453,3 +453,38 @@ kable(outcome_summary_table, caption = "Match Outcomes by Outlier Status")
 fisher_res <- fisher.test(table_outcomes)
 
 #Extreme touch events seem to propose a different match outcome. Dive into match level analysis.
+
+
+#### Clean up the Matches sheet a bit more:
+
+#Clean Match column data for use
+Matches_final_cleaned <- Matches_final %>%
+  mutate(
+    GoalsFor = as.numeric(str_trim(GoalsFor)),
+    GoalsAgainst = as.numeric(str_trim(GoalsAgainst))
+  )
+
+
+# Turn any X or XX in Goals For to 0
+Matches_final_cleaned <- Matches_final %>%
+  mutate(
+    GoalsFor = case_when(
+      GoalsFor %in% c("X", "XX") ~ "0",
+      TRUE ~ GoalsFor
+    ),
+    GoalsFor = as.numeric(str_trim(GoalsFor)),
+    GoalsAgainst = case_when(
+      GoalsAgainst %in% c("X", "XX") ~ "0",
+      TRUE ~ GoalsAgainst
+    ),
+    GoalsAgainst = as.numeric(str_trim(GoalsAgainst))
+  )
+
+
+#Get TeamID into Matches_final
+Matches_finalID <- Matches_final_cleaned %>%
+  mutate(
+    MatchID = str_pad(MatchID, width = 4, pad = "0"),  # in case it was shortened
+    TeamID = str_sub(MatchID, 1, 2),                     # preserve leading zeros
+    GoalDiff = GoalsFor - GoalsAgainst
+  )
