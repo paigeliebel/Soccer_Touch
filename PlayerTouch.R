@@ -16,6 +16,7 @@ library(ggsignif)
 # Load data and prior processing
 source("Data_Management.R") 
 source("Core_Hypothesis.R")
+source("Overview_Summary_Data.R")
 source("MatchPerformance_Stats_PK.R")
 
 
@@ -264,32 +265,14 @@ loess_percenthalf_both <- ggplot(Touches_PlayerHyp_binned_half, aes(x = PercentH
   scale_color_manual(values = c("First Half" = "blue", "Second Half" = "red")) +
   theme_minimal()
 
-##### Great. So now we know there is an "uptick" in touches throughout the match
-##### Touch rate doesn't appear 'constant' throughout a match. I feel like I can't compare 
-##### touch rate before a goal to touch rate over a whole match of no scoring
-##### look at total match by match analysis? Players who scored, the rate before scoring,
-##### and the rate of the overall touch rate for the match for the player --> too many confounding variables
-##### if the player scores, the team is winning. Do we look at them compared to players who don't score? 
-##### do we look at average touch rate up to the point of their average goal scoring moment? That seems wrong. 
+######
+######
+# Is touch associated with scoring or is scoring associated with touch??
 
-#Final Direction:
-#Hypothesis: "Do players show an elevated prosocial touch rate in the period before they score (compared to their usual baseline in games when they do not score)?"
-#Baseline: player’s normal rhythm, from Non-Goal matches (per % match completion)
-#Target: player’s behavior before first goal (per % match completion)
+# Look until first goal is scored. Is the touch frequency above or below?
+# If it is above, then it would suggest that scoring is associated with touch. As in higher than normal touch is indicative of scoring
 
-# EXPAND PlayersInvolved: each player gets touch involvement credit
-# If three players were involved in teh touch, there are three total rows from the original 1
-# If a player is in the playersinvolved (regardless of toucher or touchee), they are credite the touch
-Touches_PlayerHyp_Expanded <- Touches_PlayerHyp %>%
-  separate_rows(PlayersInvolved, sep = ",\\s*") %>%
-  mutate(Player = PlayersInvolved)
+# Do teams that score the first goal exhibit an above-average touch rate leading up to that goal, compared to their own season baseline?
 
-# Build scoring matches dataframe
-scoring_matches <- player_match_with_goals %>%
-  filter(Scored == 1) %>%
-  select(SeasonMatchNumber, TeamID, Player, PercentGoalTime)  # this is your "window" per scoring match
 
-# need to determine what percent of the window the player played
-# can't look at 0-55% window of baseline and compare to a player subbed in at 50%. Of course there would be fewer touched (would need to compare 50-55%)
-# I guess we can create an overall baseline first. just create a scatter plot for each player that tracks when they usually touch in non-scoring matches
-# then compare to this baseline 
+# If it is below, needs more analysis (maybe dive into how touch looks like whe a team is trailing or ahead)

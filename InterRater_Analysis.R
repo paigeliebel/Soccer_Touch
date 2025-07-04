@@ -62,12 +62,10 @@ print(icc_result)
 
 ############################ Simple Reciprocity Check ############################
 
-# Updated exclusion list
-Exclude_Situation_IT <- c("GF", "GA", "SUB", "IT")
 
 Reciprocal_IR <- Touches_interrater %>%
   filter(!(HapticRitual %in% Exclude_Touch)) %>%
-  filter(!(Situation %in% Exclude_Situation_IT)) %>%
+  filter(!(Situation %in% Exclude_Situation)) %>%
   mutate(
     Reciprocity = str_trim(Reciprocal),
     ReciprocityType = case_when(
