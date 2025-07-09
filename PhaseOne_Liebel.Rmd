@@ -11,9 +11,86 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Phase One: Initial Data Analysis and Exploration 
 
+# Questions for Anne to address:
+
+Spoke with Annett: non-parametric vs parametric for each subset of data, phase 2 (ordinal mixed effects model that allows for nesting etc)
+
+*Shapiro-Wilk Test showed parametric and sometimes non-parametric depending on the data set analyzed. For example, total overall touch frequency at the season level was normally distributed across teams, but not when we broke it down to match level. Annett said to run a test for each test and use what is appropriate for each data subset. What do you think? Previously we were set on doing only non-parametric*
+
 Note: One limitation of this dataset is that most variables are not continuous. For example, final rank is ordinal (a team cannot finish 3.5th), and goal differential is an integer. This restricts the use of certain statistical models. We will address this further in Phase Two using an ordinal mixed-effects model framework.
 
-Data Management, merging, and cleaning not shown. 
+# Document Run-through
+
+1. **Season-Level Data Overview**
+Data Filtering Process
+Flow Chart
+Total Season-Level Touches By Team
+
+2. **Season Outcome Hypothesis**  
+_Hypothesis:_ Teams with higher frequencies of pro-social touch across the season would achieve better final standings.  
+_Finding:_ No strong association was observed between total pro-social touch frequency over the season and final standings (counter to prior findings in basketball). Further work could explore alternate modeling approaches (e.g., controlling for goal celebrations).
+Data Management, merging, and cleaning not shown.
+
+This led to considering a by-match analysis in relation to end-of-seaon outcome. 
+-Touches per Game
+-Variation of Touch Per Game within each Team
+-Scaled per team analysis
+
+3. **Outlier Analysis**
+
+Suggested that we should take a look at how touch levels affect the outcome of individual matches.
+
+4. **Match Outcome Hypothesis**
+_Hypothesis:_ Matches where teams exceeded their typical touch behavior would be associated with better match outcomes.  
+_Finding:_ A significant positive correlation was observed — matches where teams displayed higher-than-usual prosocial touch behavior were associated with more favorable goal differentials.
+
+-Unscaled
+-Scaled
+
+5. **Type of Touch: Reciprocity**
+*Does type of touch matter?*
+Steps 2-4 above looked at touch frequency. This breaks the analysis down into how players are touching each other.
+
+Similar to steps 2-4, we start with a season level outcome analysis and then go into match by match. 
+
+_Hypothesis 1:_ Teams with a higher ratio of reciprocal vs. non-reciprocal touches finish higher in the standings.  
+_Finding:_ A higher reciprocal-to-non-reciprocal touch ratio was not associated with better standings. 
+
+_Hypothesis 1.a:_ Matches where teams have a higher ratio of reciprocal vs. non-reciprocal touches would be associated with better match outcomes.  
+_Finding:_ A higher reciprocal-to-non-reciprocal touch ratio at the match-level was associated with more favorable goal differentials. 
+
+Also looked at 'scaled' version of match-level goal differentials. 
+
+6. **Social Network Strength**
+
+Player Touch Concentration and Role Dynamics
+
+_Hypothesis:_ Teams with more evenly distributed touch behaviors across players would finish higher in the end of season standings.  
+_Finding:_ Teams with a more evenly shared involvement (lower Gini) tended to finish higher in the standings.
+
+-Touch Concentration: Who Initiate and Recievers Touches (Toucher and Touchee)
+-Role Dynamics: Do players act as both touchers and touchees?
+-Role Ratio
+-Relative Touch Contribution
+
+7. **Time-Elapsed Touch Frequency**
+
+Examines how Run-of-play touch frequency evolves throughout a match.
+
+Pokes at building a possible 'causal framework'.
+
+Compare pre-goal touch rate vs season baseline touch rate.
+
+Asks whether touch behaviors precede scoring (suggesting touch helps create scoring opportunities) or if they are a response to scoring (suggesting celebration or momentum).
+
+_Hypothesis:_ Teams that score the first goal of a match exhibit a higher touch rate up to that point, relative to their own baseline in matches where they did not score first.
+_Finding:_  
+
+
+8. **Inter-Rater Reliability**
+
+Reliable across touch frequency, reciprocal, and non-reciprocal. 
+
 ```{r Data Management, message=FALSE, warning=FALSE, include=FALSE}
 # Data_Management
 # For more information on these data frames please look at the README.md file
@@ -932,11 +1009,15 @@ unfiltered <- unfiltered %>%
 
 unfiltered_graph <- ggplot(unfiltered, aes(x = TeamID, y = `Total Season Touches`)) +
   geom_col(fill = "gray60") +
-  labs(title = "Total Season Touches by Team (Unfiltered)",
-       x = "Team (Ordered by Touch Count)",
-       y = "Total Season Touches") +
+  labs(
+    title = "Total Season Touches by Team",
+    subtitle = "Unfiltered, All Recorded Touch Instances (n = 14869)",
+    x = "Team (Ordered by Touch Frequency)",
+    y = "Touch Frequency"
+  ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
 
 unfiltered_densityplot <- ggplot(unfiltered, aes(x = `Total Season Touches`)) +
   geom_density(fill = "gray60", alpha = 0.7) +
@@ -963,7 +1044,8 @@ filtered <- ByTeam_Total_Touch_Instance_count %>%
 
 filtered_plot <- ggplot(filtered, aes(x = TeamID, y = `Total Season Touches`)) +
   geom_col(fill = "gray60") +
-  labs(title = "Total Season Touches by Team (Filtered : Core Data)",
+  labs(title = "Total Season Touches by Team",
+       subtitle = "Filtered to Core Data: Run-of-Play (n = 7955)",
        x = "Team (Ordered by Touch Count)",
        y = "Total Season Touches") +
   theme_minimal() +
@@ -986,22 +1068,22 @@ totalseason_parametric <- shapiro.test(filtered$`Total Season Touches`)
 #Boxplot with both
 touch_box_df <- bind_rows(
   unfiltered %>%
-    mutate(Type = "Unfiltered") %>%
+    mutate(Type = "All-Recorded (n=14869)") %>%
     select(Type, `Total Season Touches`),
   
   filtered %>%
-    mutate(Type = "Filtered") %>%
+    mutate(Type = "Filtered to Run-of-Play (n=7955)") %>%
     select(Type, `Total Season Touches`)
 ) %>%
-  mutate(Type = factor(Type, levels = c("Unfiltered", "Filtered")))
+  mutate(Type = factor(Type, levels = c("All-Recorded (n=14869)", "Filtered to Run-of-Play (n=7955)")))
 
 
 totalseason_boxplot <- ggplot(touch_box_df, aes(x = Type, y = `Total Season Touches`)) +
   geom_boxplot(fill = "gray70", outlier.shape = NA) +
   geom_jitter(width = 0.2, height = 0, size = 2, color = "gray30", alpha = 0.8) +
-  labs(title = "Comparison of Total Season Touches by Team",
-       x = "Data Type",
-       y = "Total Season Touches") +
+  labs(title = "Comparison of Total Season Touch Data Subsets",
+       x = "Data Subset",
+       y = "Total Season Touch Frequency by Team") +
   theme_minimal()
 
 #Fantastic.
@@ -1165,7 +1247,7 @@ match_outcomes_outliers <- ggplot(outcome_summary, aes(x = OutlierStatus, y = pr
   labs(
     title = "Match Outcomes by Outlier Status",
     x = "Match Type",
-    y = "Proportion"
+    y = "Proportion (Note that Outliers have n = 9"
   ) +
   theme_minimal()
 
@@ -1317,7 +1399,9 @@ totalseason_pearson_unfiltered <- cor.test(
 
 ```
 
-# Data Summary of total touch instances, matches watched, teams included, etc.
+# *1. Season-Level Data Overview*
+
+Data Summary of total touch instances, matches watched, teams included, etc.
 
 Table 1 Below. Summary of dataset dimensions before filtering.
 
@@ -1371,13 +1455,17 @@ totalseason_parametric
 # Data is normal. Therefore, parametric.
 ```
 
+*Shapiro-Wilk Test showed that this data set, the total season touches filtered to the run of play is normally distributed. However, this is just for overall Touch Frequency in the season, once we break it down further, things can change.*
+
+Boxplot comparison of the overall, unfiltered data which includes both prosocial and nonsocial touches to the core data subset used in the rest of analysis which includes only run-of-play. 
+
 ```{r tota_season_boxplot, echo=FALSE, message=FALSE, warning=FALSE}
 totalseason_boxplot 
 ```
 
 We begin by testing a core hypothesis: do teams that touch more throughout the season perform better by the end of the season?
 
-## Season Level Hypothesis
+# *2. Season Outcome Hypothesis*
 
 How does season level touch frequency tie to end of season success?
 
@@ -1389,10 +1477,10 @@ Appears that there is not a strong assosciation between run-of-play touch freque
 
 While no clear association emerged at the season level, we now investigate whether *match-level* touch frequency relates to outcomes like goal differential.
 
-## By-Match Breakdown
+# By-Match Breakdown of Touch Frequency relation to End of Season Outcome
 
-Interested in By-match break down. Previously looked at the season level
-This is all still looking at only Prosocial, run-of-play data. 
+Interested in looking at by-match breakdown in relation to end of season success. Previously looked at overall touch at the season level.
+This is still looking at only Prosocial, run-of-play data. 
 
 ```{r match_break_down_team, echo=FALSE, message=FALSE, warning=FALSE}
 #First just Histogram of touch frequency per match across all teams
@@ -1404,6 +1492,12 @@ touches_per_match_parametric
 
 #NON-PARAMETIC! Do not use linear regression etc. use non-parametric alternatives.
 
+
+```
+
+*By-match level data is non-parametric according to Shapiro-Wilks test*
+
+```{r match_break_down_team2, echo=FALSE, message=FALSE, warning=FALSE}
 #By team explosion of histograms
 
 touches_permatch_plot_teamlevel
@@ -1417,6 +1511,7 @@ touch_permatch_ridgelineplot
 #Same thing but ordered by final rank
 # Visualize with boxplots 
 TouchesPerGame_vs_rank
+
 ```
 
 Could overall season success be based on a teams consistency of touch?
@@ -1452,7 +1547,7 @@ team_variation_summary <- cor.test(team_variation_ranked$iqr_touch, team_variati
 # No relationship between variability within-a-team and end of season rankings. 
 ```
 
-Does variation in touches per-match across the season link to end of season rankings?
+*Does variation in touches by a team per-game across the season link to end of season rankings?*
 
 ```{r Variation_vs_FinalStandings, echo=FALSE, message=FALSE, warning=FALSE}
 team_variation_plot
@@ -1460,12 +1555,14 @@ team_variation_plot
 team_variation_summary
 ```
 
-## Scale touch to team-based
-(adjusting for team touch culture)
+**No relationship between variability within-a-team and end of season rankings.**
 
-Scaled to each team
+## Scale-Touch to Account for Team Culture
+(adjusting for each team's touch profile)
 
-```{r}
+ScaledTouch = (TouchCount - median_touch) / iqr_touch
+
+```{r scaledtotouchbymatch1, echo=TRUE, message=FALSE, warning=FALSE}
 ############### Scaling by team #####################################
 
 # recognizing each team has their own touch culture
@@ -1501,11 +1598,19 @@ touches_permatch_scaled_plot <- ggplot(Touches_per_match_scaled_ranked, aes(x = 
 
 ```
 
-## Explore Outliers
+*Does variation in touches by a team per-game, scaled for their individual touch profile, across the season link to end of season rankings?*
 
-outlier is 1.5 IQR
+```{r scaledtotouchbymatch2, echo=TRUE, message=FALSE, warning=FALSE}
+touches_permatch_scaled_plot
+```
 
-Could extreme touch level matches be associated with with better outcomes?
+**No relationship between scaled variability within-a-team and end of season rankings.**
+
+# *3. Outlier Analysis*
+
+Outlier defined as 1.5 IQR
+
+*Could extreme touch level matches be associated with with better outcomes?*
 
 ```{r Outliers, echo=FALSE, message=FALSE, warning=FALSE}
 
@@ -1518,9 +1623,11 @@ fisher_res
 
 ```
 
+Fisher Test shows that there is a non-random association between the two groups, normal and outlier match outcomes. Accurate for small sample sizes. 
+
 Extreme touch events seem to propose a different match outcome. If a team is way touchier than normal, it appears to be associated at success at the match level. Dive into match level analysis.
 
-## Match Level Hypothesis
+# *4. Match Outcome Hypothesis*
 
 Is touch frequency tied to match level success?
 
@@ -1628,13 +1735,17 @@ Touch_GoalDiff_scaled_Analysis_plot <- ggplot(Touch_GoalDiff_scaled_Analysis, ae
 Are high touch frequency matches associated with high goal differentials?
 
 Start with unscaled, not adjusted to the team's individual profile:
+
 ```{r unscaled_by_match_plots, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
 Touch_Unscaled_GoalDiff_Plot
 
 Touch_Unscaled_GoalDiff_cor_test 
 ```
 
-Scaled, as before, to the team's individual profile;
+*Spearman test shows significance. Higher touch rates in a match are associated to wins.*
+
+Scaled, as before, to the team's individual profile:
+
 ```{r scaled_by_match_plots, echo=FALSE, message=FALSE, warning=FALSE, paged.print=FALSE}
 
 # Visualize 
@@ -1648,10 +1759,11 @@ Touch_Scaled_GoalDiff_cor_test
 Touch_GoalDiff_scaled_Analysis_plot 
 ```
 
-Both show statistical significance! Matches in where teams touch more, both overall frequency and compared to their individual profile, are associated with higher goal differentials. 
+*Both show statistical significance, Matches in where teams touch more, both overall frequency and compared to their individual profile, are associated with higher goal differentials.*
 
-## Reciprocity
-Looking at TYPE of Touch now, not simply frequency
+# *5. Type of Touch*
+
+Looking at TYPE of Touch now, not only frequency. 
 
 ```{r REcriprocitycode, echo=TRUE, message=TRUE, warning=FALSE}
 #Reciprocity
@@ -1954,7 +2066,7 @@ cor.test(match_vs_season_ratio$Ratio_Deviation, match_vs_season_ratio$GoalDiff, 
 
 Reciprocity Ratio = Reciprocal Touches / Non-Reciprocal Touches
 
-Calculated each team's ratio of reciprocal to non-reciprocal touches (prosocial and run of play filtered) over the entire season.
+Calculated each team's ratio of reciprocal to non-reciprocal touches (Run of play filtered) over the entire season.
 
 ```{r recipratioteamplot, echo=FALSE, message=FALSE, warning=FALSE}
 lollipop_season_recip_byteam_plot
@@ -1970,9 +2082,11 @@ ratio_recip_pearson_result_filtered
 
 ```
 
-Not statistically significant. Lets look at match level analysis.
+**Data found to be normally distributed**
 
-## Match-Level Reciprocity Ratio
+*Not statistically significant.* *Touch Ratio does not associate with end-of-season outcomes.* Lets look at match level analysis.
+
+# Match-Level Reciprocity Ratio
 
 Examine whether match-level reciprocity ratio is linked to goal differential
 
@@ -1989,9 +2103,15 @@ spearman_ratio_goaldiff
 
 ```
 
-Looking at it per team scaling as a distance from the team's average ratio:
+**Data found to NOT be normally distributed**
 
-```{r}
+*A very weak positive relationship is found: as the reciprocal to non-recip touch ratio increases, goal differential tends to increase slightly.*
+
+## Match-Level Deviation from each Team's Reciprocity Profile
+
+Match-Level Deviation = (Team's Match Ratio) - (Team's Average Ratio)
+
+```{r matchratiodeviation, echo=FALSE, message=FALSE, warning=FALSE}
 ###With a team profile profile (difference from normal)####
 
 match_ratio_by_team
@@ -2003,9 +2123,12 @@ match_vs_season_ratio_plot
 cor.test(match_vs_season_ratio$Ratio_Deviation, match_vs_season_ratio$GoalDiff, method = "spearman")
 ```
 
-## Social Network Strength: Player Touch Concentration and Role Dynamics
+*A weak but positive correlation was found between match-evel deviations from a team's season-average reciprocity ratio and goal differential. Teams perform slightly better in matches where they exhibit higher than usual reciprocity.*
 
-Dove into the Touch Distribution across players within Teams
+# *6. Social Network Strength*
+
+We explored whether the way touches are distributed across players within a team reflects its internal structure — and whether this structure relates to performance.
+Dove into the Touch Distribution across players within teams
 
 ### Cleaning and Validating Player Interaction Data
 
@@ -2359,35 +2482,38 @@ spearman_corr_gini <- cor(gini_with_rank$Rank, gini_with_rank$Gini, method = "sp
 
 ---
 
-### Player-Level Involvement: Team Touch Hierarchies
+## Player-Level Involvement: Team Touch Hierarchies
 
-#### Histograms per Team
+### Histograms per Team
 
 To visualize player-level involvement, we plotted how often each athlete initiated (toucher) or received (touchee) a touch. Teams vary widely in how evenly touches are distributed across players.
 
-```{r message=FALSE, warning=FALSE}
+```{r histogramforsocialnet, echo=FALSE, message=FALSE, warning=FALSE}
 toucher_histo
 Touchee_histo
 ```
 
-#### Ridgeplots by Team Ordered by Gini
+### Ridgeplots by Team Ordered by Gini
 
 To quantify touch distribution within each team, we calculated a Gini coefficient per team. A higher Gini suggests that few players dominate the team's touch activity. The ridgeplots below highlight these disparities.
 
-```{r message=FALSE, warning=FALSE}
+```{r histogramforsocialnet2, echo=FALSE, message=FALSE, warning=FALSE}
 Toucher_plot_gini_ordered
 Touchee_plot_gini_ordered
 ```
 
-#### Combined Role Scatterplot (Toucher vs. Touchee)
+A high Gini indicates that touches are concentrated among a a few players; a low Gini suggests a more even distribution. 
+
+### Combined Role Scatterplot (Toucher vs. Touchee)
 
 We explored whether certain players consistently acted as both initiators and receivers of touch events. At the league level, there's a moderate positive relationship — players who initiate more also tend to receive more. Within teams, these patterns vary.
 
-```{r message=FALSE, warning=FALSE}
+```{r rolescatter, echo=FALSE, message=FALSE, warning=FALSE}
 Toucher_v_Touchee_plot_global
 Toucher_v_Touchee_plot_team
 team_correlations_touchervtouchee
 ```
+
 
 ---
 
@@ -2395,7 +2521,11 @@ team_correlations_touchervtouchee
 
 We calculated a role ratio for each player: touches initiated / touches received. A ratio near 1 suggests balanced involvement. Some teams had wider spreads than others, indicating specialized player roles.
 
-```{r message=FALSE, warning=FALSE}
+Role Ratio = tuoches initiated / touches received
+
+A ratio near 1 suggests balanced participation.
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 combined_ratios_plot
 ```
 
@@ -2403,41 +2533,46 @@ combined_ratios_plot
 
 ### Global Player Involvement: Across All Roles
 
-We also considered a broader definition of touch involvement using the `PlayersInvolved` field. This includes all players present in the interaction, not just the toucher or touchee. Patterns echoed those seen in the prior plots, with a few players per team often dominating touch events.
+We also considered a broader definition of touch involvement using the `PlayersInvolved` field. This includes all players present in the interaction, not just the toucher or touchee. Patterns echoed those seen in the prior plots, with a few players per team often dominating touch events. Therefore, this also includes group events. 
 
-```{r message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 player_involved_histo
 player_involved_ridgeplot
 ```
 
 ---
 
-### Relative Contribution: Within-Team Normalization
+## Relative Contribution: Within-Team Normalization
 
 To highlight intra-team roles, we normalized each player's involvement relative to their team average. A player well above the red line (mean) suggests high centrality within the touch network.
 
-```{r message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 player_counts_mean_plot
 ```
 
+To better understand team hierarchies, we normalized each player’s touch count relative to their own team’s average. Players well above the team mean (indicated by a red line in the plot) appeared as hubs in their team’s social network. This revealed that some teams had clear focal players, while others were more egalitarian.
+
 ---
 
-### Gini vs. Final Rank: Do Balanced Teams Win?
+## Gini vs. Final Rank: Do Balanced Teams Win?
 
 Finally, we tested whether teams with more evenly distributed player involvement (lower Gini) performed better across the season. Results suggest a moderate negative correlation between Gini coefficient and final rank — teams with more egalitarian touch networks tended to finish higher.
 
-```{r message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 gini_rank_plot
 spearman_corr_gini  # Spearman's rho
 ```
 
 
-## Touch Frequency Over the Course of a Match
+# *7. Time-Elapsed Touch Frequency*
 
+Examines how Run-of-play touch frequency evolves throughout a match.
 In this section, we examine how prosocial touch behavior evolves throughout the duration of a match. Specifically, we analyze the frequency of touches as a function of **match time**, using data from all eligible prosocial touch events across the season.
 
 ### Data Preparation
 We filtered out negative, coaching, or administrative events (`TA`, `CO`, `NEG`) and excluded non-play situations like goals, substitutions, and cards (`GF`, `GA`, `SUB`). Time stamps for each touch were converted to total seconds and normalized to create a **percent-of-match-completion** variable.
+
+Therfore, looks at Run-of-play (CoreData) touches.
 
 ```{r Touch_by_time, echo=TRUE, message=FALSE, warning=FALSE}
 # Libraries
@@ -2612,21 +2747,21 @@ Touches_PlayerHyp <- Touches_PlayerHyp %>%
   ) %>%
   mutate(PercentOfMatch = TimeInSeconds / TotalMatchSeconds)
 
-# Plot: Histogram with percent of match completion (1% bin)
-Histogram_TouchesTime_PercentTime <- ggplot(Touches_PlayerHyp, aes(x = PercentOfMatch)) +
-  geom_histogram(binwidth = 0.01, fill = "steelblue", color = "black") +
-  labs(title = "Touches by % of Match Completion",
-       x = "% of Match Completion",
-       y = "Number of Touches") +
-  theme_minimal()
-
 # Step 1: Bin data into 1% bins
 Touches_PlayerHyp_binned <- Touches_PlayerHyp %>%
   mutate(PercentBin = floor(PercentOfMatch / 0.01) * 0.01) %>%  # bins of 1%
   group_by(PercentBin) %>%
   summarise(TouchCount = n(), .groups = "drop")
 
-# Step 2: Plot histogram + smooth trend line (LOESS)
+# Plot: Histogram with percent of match completion (1% bin)
+Histogram_TouchesTime_PercentTime <- ggplot(Touches_PlayerHyp_binned, aes(x = PercentBin, y = TouchCount)) +
+  geom_col(fill = "steelblue", color = "black", width = 0.01) +
+  labs(title = "Touches by % of Match Completion",
+       x = "% of Match Completion",
+       y = "Number of Touches") +
+  theme_minimal()
+
+# Plot histogram + smooth trend line (LOESS)
 histogram_smoothline <- ggplot(Touches_PlayerHyp_binned, aes(x = PercentBin, y = TouchCount)) +
   geom_col(fill = "steelblue", color = "black", width = 0.01) +  # Histogram bars
   geom_smooth(method = "loess", se = FALSE, color = "red", size = 1.2, span = 0.3) +  # Smooth line
@@ -2637,22 +2772,20 @@ histogram_smoothline <- ggplot(Touches_PlayerHyp_binned, aes(x = PercentBin, y =
 
 ```
 
-### Histogram: Raw Match Time (Minutes)
-```{r Histogram_TouchesTime, fig.width=8, fig.height=4}
+```{r Histogram_TouchesTime, echo=FALSE, fig.height=4, fig.width=8}
 Histogram_TouchesTime
 ```
+
 While this raw histogram by clock minutes gives a general impression, it does not normalize for variable match lengths.
 
-### Histogram: Touches by % of Match Completion
-```{r Histogram_TouchesTime_PercentTime, fig.width=8, fig.height=4}
-Histogram_TouchesTime_PercentTime
-```
-This normalized histogram shows how touches distribute across matches regardless of game length. This framing allows for cleaner interpretation.
 
 ### Final Figure: Smoothed Touch Distribution Across Time
-```{r histogram_smoothline, fig.width=9, fig.height=5}
+```{r histogram_smoothline, echo=FALSE, fig.height=5, fig.width=9}
 histogram_smoothline
 ```
+
+This normalized histogram shows how touches distribute across matches regardless of game length. 
+
 The final visualization bins touches by **1% intervals** of match progress and overlays a **LOESS-smoothed trendline**. We observe:
 
 - A sharp rise in touch behavior early in the match
@@ -2661,7 +2794,7 @@ The final visualization bins touches by **1% intervals** of match progress and o
 
 This pattern may reflect the evolution of interpersonal dynamics and game tempo. Future analyses may compare this with goal distribution, player fatigue markers, or team-specific variations.
 
-## Inter-rater Reliability Analysis
+# *8. Inter-rater Reliability*
 
 This section evaluates inter-rater reliability (IRR) across 12 shared matches using multiple perspectives:
 - Total counts of touches
