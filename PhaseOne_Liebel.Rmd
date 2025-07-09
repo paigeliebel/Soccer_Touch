@@ -83,8 +83,14 @@ Compare pre-goal touch rate vs season baseline touch rate.
 
 Asks whether touch behaviors precede scoring (suggesting touch helps create scoring opportunities) or if they are a response to scoring (suggesting celebration or momentum).
 
-_Hypothesis:_ Teams that score the first goal of a match exhibit a higher touch rate up to that point, relative to their own baseline in matches where they did not score first.
-_Finding:_  
+_Hypothesis 1:_ Teams that score the first goal of a match exhibit a higher touch count (up to that point) than their average in matches where they did not score first.
+_Finding:_ No significant difference; elevated pre-goal touch is not universally predictive.
+
+This led me to realize that there is perhaps a difference in pre-goal touch differences between winners and losers in the match. Maybe pre-goal touch does precede the first goal, but it explains the trajection. 
+
+_Hypothesis 2:_ Teams that score the first goal of a match exhibit a higher touch count (up to that point) than their average in matches where they did not score first.
+_Finding:_ No significant difference; elevated pre-goal touch is not universally predictive.
+
 
 
 8. **Inter-Rater Reliability**
@@ -2770,6 +2776,269 @@ histogram_smoothline <- ggplot(Touches_PlayerHyp_binned, aes(x = PercentBin, y =
        y = "Number of Touches") +
   theme_minimal()
 
+#Plots by outcome, W, D, L
+# Merge outcome with touch data
+touches_with_outcome <- Touches_PlayerHyp %>%
+  left_join(Matches_finalID %>% select(SeasonMatchNumber, TeamID, Outcome),
+            by = c("SeasonMatchNumber", "TeamID")) %>%
+  filter(!is.na(Outcome), !is.na(PercentOfMatch))  # Filter to valid rows
+
+# Bin percent of match into 1% intervals
+touches_binned <- touches_with_outcome %>%
+  mutate(PercentBin = floor(PercentOfMatch / 0.01) * 0.01) %>%
+  group_by(Outcome, PercentBin) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
+## Filter to Wins and Losses only
+touches_binned_filtered <- touches_binned %>%
+  filter(Outcome %in% c("W", "L"))
+
+# Count sample sizes (number of touches per outcome)
+n_counts <- touches_binned_filtered %>%
+  group_by(Outcome) %>%
+  summarise(TotalTouches = sum(TouchCount), .groups = "drop")
+
+# Extract n values
+n_win <- n_counts %>% filter(Outcome == "W") %>% pull(TotalTouches)
+n_loss <- n_counts %>% filter(Outcome == "L") %>% pull(TotalTouches)
+
+#############
+# Section C: Touch Activity by Match Outcome
+#############
+
+# _Hypothesis:_ Teams that score the first goal of a match exhibit a higher touch count (up to that point) than their average in matches where they did not score first.
+
+# First, get first goal time as decimal
+# Construct 'first_goals'
+first_goals <- goals_exploded %>%
+  left_join(
+    Matches_final %>% select(SeasonMatchNumber, TeamID, TotalMatchSeconds),
+    by = c("SeasonMatchNumber", "TeamID")
+  ) %>%
+  group_by(SeasonMatchNumber) %>%
+  filter(TotalSecondsElapsed == min(TotalSecondsElapsed, na.rm = TRUE)) %>%  # first goal in the match
+  ungroup() %>%
+  mutate(PercentOfMatch = TotalSecondsElapsed / TotalMatchSeconds)
+
+first_goals_with_bins <- first_goals %>%
+  mutate(
+    FirstGoalBin = floor(PercentOfMatch * 100),
+    FirstGoalDecimal = FirstGoalBin / 100
+  ) %>%
+  select(SeasonMatchNumber, TeamID, FirstGoalDecimal)
+
+# Calculate average time of first goal (as % of match)
+avg_first_goal_percent <- first_goals_with_bins %>%
+  summarise(AverageFirstGoal = mean(FirstGoalDecimal, na.rm = TRUE)) %>%
+  pull(AverageFirstGoal)
+
+# Count actual touches up to the goal
+touch_counts <- Touches_PlayerHyp %>%
+  inner_join(first_goals_with_bins, by = c("SeasonMatchNumber", "TeamID")) %>%
+  filter(PercentOfMatch <= FirstGoalDecimal) %>%
+  group_by(SeasonMatchNumber, TeamID, FirstGoalDecimal) %>%
+  summarise(TouchesUpToGoal = n(), .groups = "drop")
+
+# Ensure all first-scoring matches are retained, with 0s where no touches
+touches_up_to_first_goal <- first_goals_with_bins %>%
+  left_join(touch_counts, by = c("SeasonMatchNumber", "TeamID", "FirstGoalDecimal")) %>%
+  mutate(TouchesUpToGoal = replace_na(TouchesUpToGoal, 0))
+
+
+# For each row in touches_up_to_first_goal, compute their baseline from other matches
+baseline_touch_counts <- touches_up_to_first_goal %>%
+  mutate(FirstScoringMatch = SeasonMatchNumber) %>%
+  pmap_dfr(function(FirstScoringMatch, TeamID_focal, FirstGoalDecimal, TouchesUpToGoal, ...) {
+    cutoff <- FirstGoalDecimal
+    
+    # Filter same team, different match, did not score first
+    other_matches <- Touches_PlayerHyp %>%
+      filter(TeamID == TeamID_focal, SeasonMatchNumber != FirstScoringMatch) %>%
+      anti_join(first_goals_with_bins, by = c("SeasonMatchNumber", "TeamID")) %>%
+      filter(PercentOfMatch <= cutoff) %>%
+      group_by(SeasonMatchNumber) %>%
+      summarise(TouchesToCutoff = n(), .groups = "drop")
+    
+    tibble(
+      SeasonMatchNumber = FirstScoringMatch,
+      TeamID = TeamID_focal,
+      FirstGoalDecimal = cutoff,
+      TouchesUpToGoal = TouchesUpToGoal,
+      BaselineTouchesToCutoff = mean(other_matches$TouchesToCutoff, na.rm = TRUE)
+    )
+  })
+
+
+baseline_touch_counts <- baseline_touch_counts %>%
+  mutate(Diff = TouchesUpToGoal - BaselineTouchesToCutoff)
+
+baselinetouch_plot <- ggplot(baseline_touch_counts, aes(x = Diff)) +
+  geom_histogram(binwidth = 2, fill = "steelblue", color = "black") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "red") +
+  labs(
+    title = "Difference in Touches Before First Goal vs. Baseline",
+    x = "(TouchesUpToGoal - BaselineTouchesToSameTimeAsGoalScored)",
+    y = "Match Count"
+  ) +
+  theme_minimal()
+
+# Test: are first-goal touches higher than baseline?
+wilctestbase <- wilcox.test(baseline_touch_counts$Diff, mu = 0, alternative = "greater")
+
+#Not significant
+
+#lets look at match outcome:
+
+combined_plot <- ggplot(touches_binned_filtered, aes(x = PercentBin, y = TouchCount, color = Outcome)) +
+  geom_smooth(method = "loess", se = FALSE, span = 0.7, size = 1.2) +
+  geom_vline(xintercept = avg_first_goal_percent, linetype = "dashed", color = "black") +
+  labs(
+    title = paste0("Touch Frequency over the Course of Match \n (Dashed Line = Avg 1st Goal Occurs at ", round(avg_first_goal_percent * 100), "%)"),
+    x = "% of Match Completion",
+    y = "Touch Count",
+    color = "Match Outcome"
+  ) +
+  theme_minimal() +
+  scale_color_manual(values = c("W" = "blue", "L" = "red"))
+
+# Refined Hypothesis: Matches that end in wins are characterized by higher touch rates early in the match compared to matches that end in losses.
+
+# Outcome Level Aggregate across the full season
+
+early_cutoff <- avg_first_goal_percent
+
+early_match_summary <- Touches_PlayerHyp %>%
+  filter(PercentOfMatch <= early_cutoff) %>%
+  left_join(Matches_finalID %>% select(SeasonMatchNumber, TeamID, Outcome),
+            by = c("SeasonMatchNumber", "TeamID")) %>%
+  group_by(SeasonMatchNumber, Outcome) %>%
+  summarise(EarlyTouches = n(), .groups = "drop") %>%
+  filter(Outcome %in% c("W", "L"))
+
+
+earlymatch_sum_wilc <- wilcox.test(EarlyTouches ~ Outcome, data = early_match_summary)
+
+#Adjusted to just 0.4 completion and wow significant. Touch is more tied to winning than winning is to touch.
+#This aligns with a reverse association: once a team begins to gain the upper hand (possession, control, confidence), they touch more — even before the goal, but closer to it in time.
+
+#Test Across Cutoffs: 
+
+test_across_cutoffs <- function(cutoffs) {
+  map_dfr(cutoffs, function(cutoff) {
+    temp_summary <- Touches_PlayerHyp %>%
+      filter(PercentOfMatch <= cutoff) %>%
+      left_join(Matches_finalID %>% select(SeasonMatchNumber, TeamID, Outcome),
+                by = c("SeasonMatchNumber", "TeamID")) %>%
+      group_by(SeasonMatchNumber, Outcome) %>%
+      summarise(EarlyTouches = n(), .groups = "drop") %>%
+      filter(Outcome %in% c("W", "L"))
+    
+    test <- wilcox.test(EarlyTouches ~ Outcome, data = temp_summary)
+    
+    tibble(
+      Cutoff = cutoff,
+      P_Value = test$p.value
+    )
+  })
+}
+
+cutoff_seq <- seq(0.1, 0.6, by = 0.01)
+pval_results <- test_across_cutoffs(cutoff_seq)
+
+# Find the first cutoff where p-value < 0.05
+signif_cutoff <- pval_results %>%
+  filter(P_Value < 0.05) %>%
+  slice(1)  # First significant entry
+
+# Plot with vertical line and annotation
+pval_plot <- ggplot(pval_results, aes(x = Cutoff, y = P_Value)) +
+  geom_line(color = "steelblue") +
+  geom_hline(yintercept = 0.05, linetype = "dashed", color = "red") +
+  geom_vline(xintercept = signif_cutoff$Cutoff, linetype = "dotted", color = "darkgreen") +
+  annotate("text", x = signif_cutoff$Cutoff + 0.01, y = 0.5,
+           label = paste0("Significant at ", signif_cutoff$Cutoff * 100, "% (p-value < 0.05)"),
+           color = "darkgreen", angle = 90, hjust = 0) +
+  labs(
+    title = "P-Value of Early Touch Differnces \n Across Match Time Cutoffs between W or L",
+    x = "Match Completion Cutoff",
+    y = "P-Value"
+  ) +
+  theme_minimal()
+
+
+# Winning matches are characterized by increasing touch activity as the match unfolds — not from the start, but starting around one-third into the game.
+# 30% coincides with that perfectly. Therefore, it seems like uptick in touch after the first goal event (note that this does not say that it is the team who scored) is associated to winning. 
+
+# If a team scores the first goal, does their subsequent touch behavior differ depending on whether they go on to win or lose the match?
+
+first_goal_with_outcome <- first_goals_with_bins %>%
+  left_join(Matches_finalID %>% select(SeasonMatchNumber, TeamID, Outcome),
+            by = c("SeasonMatchNumber", "TeamID")) %>%
+  filter(Outcome %in% c("W", "L"))  # exclude draws for now
+
+touches_after_first_goal <- Touches_PlayerHyp %>%
+  inner_join(first_goal_with_outcome, by = c("SeasonMatchNumber", "TeamID")) %>%
+  filter(PercentOfMatch > FirstGoalDecimal) %>%  # post-goal touches
+  group_by(SeasonMatchNumber, TeamID, Outcome) %>%
+  summarise(PostGoalTouches = n(), .groups = "drop")
+
+# Boxplot
+boxplot_postfirstgoal <- ggplot(touches_after_first_goal, aes(x = Outcome, y = PostGoalTouches, fill = Outcome)) +
+  geom_boxplot() +
+  labs(
+    title = "Post-First-Goal Touches by Match Outcome",
+    subtitle = "Among teams that scored first",
+    x = "Match Outcome",
+    y = "Post-Goal Touch Count"
+  ) +
+  theme_minimal()
+
+postgoal_wilc <- wilcox.test(PostGoalTouches ~ Outcome, data = touches_after_first_goal)
+
+first_goal_with_group <- first_goal_with_outcome %>%
+  mutate(Group = ifelse(Outcome == "W", "ScoredFirst_Won", "ScoredFirst_Lost"))
+
+touches_with_group <- Touches_PlayerHyp %>%
+  inner_join(first_goal_with_group %>% select(SeasonMatchNumber, TeamID, Group, FirstGoalDecimal),
+             by = c("SeasonMatchNumber", "TeamID"))
+
+touches_binned_grouped_norm <- touches_with_group %>%
+  mutate(PercentBin = floor(PercentOfMatch / 0.01) * 0.01) %>%
+  group_by(SeasonMatchNumber, TeamID, Group, PercentBin) %>%
+  summarise(TouchCount = n(), .groups = "drop")
+
+touches_binned_grouped_avg <- touches_binned_grouped_norm %>%
+  group_by(Group, PercentBin) %>%
+  summarise(AvgTouchPerMatch = mean(TouchCount), .groups = "drop")
+
+avg_first_goal_by_group <- touches_with_group %>%
+  distinct(SeasonMatchNumber, TeamID, Group, FirstGoalDecimal) %>%
+  group_by(Group) %>%
+  summarise(AvgFirstGoal = mean(FirstGoalDecimal, na.rm = TRUE))
+
+touches_winloss_firstgoal_plot <- ggplot(touches_binned_grouped_avg, aes(x = PercentBin, y = AvgTouchPerMatch, color = Group)) +
+  geom_smooth(method = "loess", se = FALSE, span = 0.7, size = 1.2) +
+  labs(
+    title = "Average Touch Rate for Teams that Scored First",
+    subtitle = "ScoredFirst_Won (n = 131) & ScoredFirst_Lost (n = 18)",
+    x = "% of Match Completion",
+    y = "Avg Touches per Match (per 1% bin)",
+    color = "Outcome Group"
+  ) +
+  scale_color_manual(values = c("ScoredFirst_Won" = "blue", "ScoredFirst_Lost" = "red")) +
+  theme_minimal() +
+  geom_vline(data = avg_first_goal_by_group,
+             aes(xintercept = AvgFirstGoal, color = Group),
+             linetype = "dashed", size = 1) +
+  geom_text(data = avg_first_goal_by_group,
+            aes(x = AvgFirstGoal, y = Inf,
+                label = paste0("Avg Goal: ", round(AvgFirstGoal, 2))),
+            angle = 90, vjust = -0.5, hjust = 1.1, size = 3,
+            inherit.aes = FALSE)
+
+#Get away from scored first.
+#Teams that maintain or increase their touch rate while in the lead are more likely to win than those that touch less.
+
 ```
 
 ```{r Histogram_TouchesTime, echo=FALSE, fig.height=4, fig.width=8}
@@ -2777,7 +3046,6 @@ Histogram_TouchesTime
 ```
 
 While this raw histogram by clock minutes gives a general impression, it does not normalize for variable match lengths.
-
 
 ### Final Figure: Smoothed Touch Distribution Across Time
 ```{r histogram_smoothline, echo=FALSE, fig.height=5, fig.width=9}
@@ -2793,6 +3061,68 @@ The final visualization bins touches by **1% intervals** of match progress and o
 - A late-match uptick, possibly linked to urgency or team-level coordination needs
 
 This pattern may reflect the evolution of interpersonal dynamics and game tempo. Future analyses may compare this with goal distribution, player fatigue markers, or team-specific variations.
+
+## Touches before first goal.
+
+Hypothesis: Teams that score the first goal of a match exhibit a higher touch count (up to that point) than their average in matches where they did not score first.
+
+```{r firstgoalgraph, echo=FALSE, message=FALSE, warning=FALSE}
+
+baselinetouch_plot
+
+wilctestbase
+
+```
+
+Result: No significant difference; elevated pre-goal touch is not universally predictive.
+
+## Touch by match outcome.
+
+Compared number of touches before the average first-goal time (~30% match completion) for teams that won vs. lost.
+
+```{r firstgoalgraph2, echo=FALSE, message=FALSE, warning=FALSE}
+
+combined_plot 
+
+```
+
+Result: Not significant overall, but became significant at adjusted thresholds (~40%), suggesting touch rate may rise slightly before or near goal events, especially in wins.
+
+## Early Touch vs Outcome
+
+Is there a statistically significant difference in early touches between winning and losing teams, if we define 'early' as up to X% of match time?
+
+Basically asking when in the game does touch start to matter?
+
+```{r firstgoalgraph4, echo=FALSE, message=FALSE, warning=FALSE}
+
+pval_plot
+
+earlymatch_sum_wilc
+
+```
+
+Significant at 32%, which is within a few percentage points of the average first goal at 30%. 
+
+*This aligns with a reverse association: once a team begins to gain the upper hand (possession, control, confidence), they touch more — even before the goal, but closer to it in time.*
+
+## Post-goal Behavior
+
+If a team scores the first goal, does their subsequent touch behavior differ depending on whether they go on to win or lose the match?
+
+Have winning teams started to touch more than losing teams at this point?
+
+```{r firstgoalgraph5, echo=FALSE, message=FALSE, warning=FALSE}
+
+boxplot_postfirstgoal
+
+postgoal_wilc
+
+touches_winloss_firstgoal_plot
+
+```
+
+Result: No statistically significant difference, but visual analysis shows touch rate maintenance or increase is more common in wins.
 
 # *8. Inter-rater Reliability*
 

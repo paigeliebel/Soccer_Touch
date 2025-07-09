@@ -14,6 +14,7 @@ library(dplyr)
 library(ggsignif)
 library(purrr)
 library(patchwork)
+library(fuzzyjoin)
 
 
 
@@ -248,6 +249,18 @@ n_loss <- n_counts %>% filter(Outcome == "L") %>% pull(TotalTouches)
 # _Hypothesis:_ Teams that score the first goal of a match exhibit a higher touch count (up to that point) than their average in matches where they did not score first.
 
 # First, get first goal time as decimal
+# Construct 'first_goals'
+first_goals <- goals_exploded %>%
+  left_join(
+    Matches_final %>% select(SeasonMatchNumber, TeamID, TotalMatchSeconds),
+    by = c("SeasonMatchNumber", "TeamID")
+  ) %>%
+  group_by(SeasonMatchNumber) %>%
+  filter(TotalSecondsElapsed == min(TotalSecondsElapsed, na.rm = TRUE)) %>%  # first goal in the match
+  ungroup() %>%
+  mutate(PercentOfMatch = TotalSecondsElapsed / TotalMatchSeconds)
+
+
 first_goals_with_bins <- first_goals %>%
   mutate(
     FirstGoalBin = floor(PercentOfMatch * 100),
@@ -444,13 +457,13 @@ avg_first_goal_by_group <- touches_with_group %>%
   group_by(Group) %>%
   summarise(AvgFirstGoal = mean(FirstGoalDecimal, na.rm = TRUE))
 
-ggplot(touches_binned_grouped_avg, aes(x = PercentBin, y = AvgTouchPerMatch, color = Group)) +
+touches_winloss_firstgoal_plot <- ggplot(touches_binned_grouped_avg, aes(x = PercentBin, y = AvgTouchPerMatch, color = Group)) +
   geom_smooth(method = "loess", se = FALSE, span = 0.7, size = 1.2) +
   labs(
     title = "Average Touch Rate for Teams that Scored First",
     subtitle = "ScoredFirst_Won (n = 131) & ScoredFirst_Lost (n = 18)",
     x = "% of Match Completion",
-    y = "Avg Touches per Match (per bin)",
+    y = "Avg Touches per Match (per 1% bin)",
     color = "Outcome Group"
   ) +
   scale_color_manual(values = c("ScoredFirst_Won" = "blue", "ScoredFirst_Lost" = "red")) +
@@ -464,11 +477,5 @@ ggplot(touches_binned_grouped_avg, aes(x = PercentBin, y = AvgTouchPerMatch, col
             angle = 90, vjust = -0.5, hjust = 1.1, size = 3,
             inherit.aes = FALSE)
 
-
-
-
-first_goal_outcomes_summary <- first_goal_with_outcome %>%
-  count(Outcome) %>%
-  mutate(Percent = round(100 * n / sum(n), 1))
-
-first_goal_outcomes_summary
+#Get away from scored first.
+#Teams that maintain or increase their touch rate while in the lead are more likely to win than those that touch less.
