@@ -342,6 +342,7 @@ gini_rank_plot <- ggplot(gini_with_rank, aes(x = Rank, y = Gini)) +
   theme_minimal()
 
 # Calculate Spearman correlation between rank and Gini
-spearman_corr <- cor(gini_with_rank$Rank, gini_with_rank$Gini, method = "spearman")
+spearman_corr <- cor.test(gini_with_rank$Rank, gini_with_rank$Gini, method = "spearman")
+
 
 # What if we do this by game? Again, with goal differential? Where a more evenly spread game (gini coefficient) could produce a better goal differential?
