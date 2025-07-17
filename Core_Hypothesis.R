@@ -29,13 +29,6 @@ Touches_by_team <- Touches_CoreData %>%
 FinalStandings <- FinalStandings %>%
   mutate(TeamID = str_pad(as.character(TeamID), width = 2, pad = "0"))
 
-#Add R1, R2 etc for team rank/labeling
-FinalStandings <- FinalStandings %>%
-  mutate(
-    TeamID = str_pad(as.character(TeamID), width = 2, pad = "0"),
-    RankLabel = paste0("R", Rank)
-  )
-
 #Join touch counts with final standings
 Team_Touches_Standings <- FinalStandings %>%
   left_join(Touches_by_team, by = c("TeamID" = "Team")) %>%
@@ -90,22 +83,33 @@ team_variation <- Touches_per_match %>%
   summarise(iqr_touch = IQR(TouchCount, na.rm = TRUE))
 
 team_variation_ranked <- team_variation %>%
-  left_join(FinalStandings %>% select(TeamID, Rank), 
+  left_join(FinalStandings %>% select(TeamID, Rank, RankLabel), 
             by = c("Team" = "TeamID")) %>%
   mutate(Rank = as.numeric(Rank))
 
 team_variation_plot <- ggplot(team_variation_ranked, aes(x = Rank, y = iqr_touch)) +
-  geom_point() +
-  geom_smooth(method = "lm", se = FALSE, color = "blue") +
-  scale_x_reverse() +
+  geom_point(size = 3, color = "gray30") +
+  geom_text_repel(aes(label = RankLabel), size = 3.5, family = "Times New Roman", max.overlaps = Inf) +
+  geom_smooth(method = "lm", se = FALSE, color = "gray40", linewidth = 1) +
+  scale_x_reverse(breaks = 1:14) +
   labs(
     title = "Within-Team Touch Variation (IQR) vs Final Season Rank",
-    x = "Final Rank (1 = Best)",
-    y = "IQR of Touches per Match"
+    x = "Final Season Rank (1 = Best)",
+    y = "IQR of Touches per Match across Season"
   ) +
-  theme_minimal()
+  theme_minimal(base_family = "Times New Roman") +
+  theme(
+    text = element_text(family = "Times New Roman", size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray85"),
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank()
+  )
 
-team_variation_summary <- cor.test(team_variation_ranked$iqr_touch, team_variation_ranked$Rank, method = "spearman")
+team_variation_summary <- cor.test(team_variation_ranked$Rank, team_variation_ranked$iqr_touch, method = "spearman")
 
 # No relationship between variability within-a-team and end of season rankings. 
 

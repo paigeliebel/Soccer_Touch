@@ -31,25 +31,46 @@ Touch_Unscaled_GoalDiff_Analysis <- Touches_per_match_team %>%
   )
 
 # Visualize 
-Touch_Unscaled_GoalDiff_Plot <- ggplot(Touch_Unscaled_GoalDiff_Analysis, aes(x = TouchCount, y = GoalDiff)) +
-  geom_point(size = 2, alpha = 0.7) +
-  geom_smooth(method = "lm", se = FALSE, color = "blue") +
-  labs(
-    title = "Touch Count vs Match Goal Differential",
-    x = "Touch Frequency per team per match",
-    y = "Goal Differential",
-    caption = "Note: Each dot represents one match outcome for a team, therefore 2 dots for each match"
+Touch_Unscaled_GoalDiff_Plot <- ggplot(Touch_Unscaled_GoalDiff_Analysis, aes(x = TouchCount, y = GoalDiff, color = Rank)) +
+  geom_point(size = 2, alpha = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, color = "gray40", linewidth = 1) +
+  scale_color_gradient(
+    low = "green3",  # Best-ranked teams
+    high = "firebrick3",  # Worst-ranked teams
+    name = "Team's Final \n Season Rank",
+    guide = guide_colorbar(reverse = TRUE)  # So R1 is green
   ) +
-  theme_minimal()
+  labs(
+    title = "Match-Level: Goal Differential vs Touch Frequency",
+    x = "Touches per Match",
+    y = "Goal Differential",
+    caption = "One dot represents match outcome for one team (2 dots per match). \nColor indicates team’s final season rank (R1 = green, R14 = red)."
+  ) +
+  theme_minimal(base_family = "Times New Roman") +
+  theme(
+    text = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 10)
+  )
 
 # Note that this data is not actually continuous. a team can't win by 2.1 or 4.3 goals.
+
+# Normality checks
+shapiro.test(Touch_Unscaled_GoalDiff_Analysis$TouchCount)
+shapiro.test(Touch_Unscaled_GoalDiff_Analysis$GoalDiff)
 
 Touch_Unscaled_GoalDiff_cor_test <- cor.test(Touch_Unscaled_GoalDiff_Analysis$TouchCount,
                      Touch_Unscaled_GoalDiff_Analysis$GoalDiff,
                      method = "spearman",
                      exact = FALSE)  # exact=FALSE for larger datasets
 
+GoalDiff_lm <- lm(GoalDiff ~ TouchCount, data = Touch_Unscaled_GoalDiff_Analysis)
+
 # This alone is statistically significant. More touch associated with more goals.
+
 
 ######## Scaled version per team ####
 
@@ -58,19 +79,39 @@ Touch_GoalDiff_scaled_Analysis <- Touches_per_match_scaled %>%
   left_join(
     Matches_finalID %>% select(SeasonMatchNumber, TeamID, GoalDiff),
     by = c("SeasonMatchNumber", "Team" = "TeamID")
+  ) %>%
+  left_join(
+    FinalStandings %>% select(TeamID, Rank),
+    by = c("Team" = "TeamID")
   )
 
+
 # Visualize 
-Touch_GoalDiff_scaled_plot <- ggplot(Touch_GoalDiff_scaled_Analysis, aes(x = ScaledTouch, y = GoalDiff)) +
-  geom_point(size = 2, alpha = 0.7) +
-  geom_smooth(method = "lm", se = FALSE, color = "blue") +
-  labs(
-    title = "Touch Count Deviation vs Match Goal Differential",
-    x = "Scaled Touch by Team Profile",
-    y = "Goal Differential",
-    caption = "Note: Each dot represents one match outcome for a team, therefore 2 dots for each match"
+Touch_GoalDiff_scaled_plot <- ggplot(Touch_GoalDiff_scaled_Analysis, aes(x = ScaledTouch, y = GoalDiff, color = Rank)) +
+  geom_point(size = 2, alpha = 0.8) +
+  geom_smooth(method = "lm", se = FALSE, color = "gray40", linewidth = 1) +
+  scale_color_gradient(
+    low = "green3", 
+    high = "firebrick3", 
+    name = "Team's Final \n Season Rank",
+    guide = guide_colorbar(reverse = TRUE)
   ) +
-  theme_minimal()
+  labs(
+    title = "Match-Level: Goal Differential vs SCALED Touch Frequency",
+    x = "Within-Team Scaled Touch Frequency (Median/IQR Normalized)",
+    y = "Goal Differential",
+    caption = "One dot represents match outcome for one team (2 dots per match). \nColor indicates team’s final season rank (R1 = green, R14 = red).",
+  ) +
+  theme_minimal(base_family = "Times New Roman") +
+  theme(
+    text = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 10)
+  )
+
 
 # Spearman:
 Touch_Scaled_GoalDiff_cor_test <- cor.test(
@@ -80,26 +121,46 @@ Touch_Scaled_GoalDiff_cor_test <- cor.test(
   exact = FALSE  # use FALSE for larger datasets
 )
 
-# Both Scaled and Unscaled are quite similar! Both are statistically significant.
+Touch_Scaled_lm <- lm(GoalDiff ~ ScaledTouch, data = Touch_GoalDiff_scaled_Analysis)
 
-Touch_GoalDiff_scaled_Analysis_plot <- ggplot(Touch_GoalDiff_scaled_Analysis, aes(x = ScaledTouch, y = GoalDiff)) +
-  geom_point(size = 2, alpha = 0.7) +
+Touch_GoalDiff_scaled_Analysis <- Touch_GoalDiff_scaled_Analysis %>%
+  mutate(RankNumber = paste0("R", Rank))
+
+Touch_GoalDiff_scaled_Analysis <- Touch_GoalDiff_scaled_Analysis %>%
+  mutate(
+    RankNumber = paste0("R", Rank),  # Creates R1, R2, ..., R14
+    RankNumber = factor(RankNumber, levels = paste0("R", 1:14))  # Ensures proper order
+  )
+
+
+Touch_GoalDiff_scaled_fourteenteam_plot <- ggplot(Touch_GoalDiff_scaled_Analysis, aes(x = ScaledTouch, y = GoalDiff)) +
+  geom_point(size = 1.2, alpha = 0.6) +
   geom_vline(xintercept = 0, linetype = "dotted", color = "red", size = 0.8) +
-  ggh4x::facet_wrap2(~ Team, ncol = 7, strip.position = "top", axes = "all") +
-  coord_cartesian(xlim = c(-4, 4)) +
+  ggh4x::facet_wrap2(~ RankNumber, ncol = 7, strip.position = "top", axes = "all") +
+  coord_cartesian(xlim = c(-2, 4)) +
   labs(
-    title = "Touch Count Deviation vs Match Goal Differential by Team",
-    x = "Scaled Touch by Team Profile",
+    title = "Match Goal Differential by Team vs Touch Count Deviation",
+    x = "Within-Team Scaled Touch Frequency (Median/IQR Normalized)",
     y = "Goal Differential",
-    caption = "Each dot represents one match outcome for a team"
+    caption = "Each dot represents one match outcome for a team (26 matches per team)"
   ) +
-  theme_minimal() +
+  theme_minimal(base_family = "Times New Roman") +
   theme(
-    strip.text = element_text(size = 10),
-    plot.title = element_text(hjust = 0.5),
-    panel.background = element_rect(fill = "white", color = "gray30", size = 0.8),
+    text = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    strip.text = element_text(size = 11, face = "bold"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray85"),
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank(),
     panel.spacing = unit(1, "lines")
   )
+
+
+
+
 
 
 ##################################################

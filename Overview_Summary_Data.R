@@ -9,6 +9,7 @@ library(readxl)
 library(rmarkdown)
 library(readr)
 library (dplyr)
+library(ggh4x)
 
 source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
 source("MatchPerformance_Stats_PK.R") 
@@ -285,11 +286,20 @@ Touches_per_match <- Touches_CoreData %>%
 touches_permatch_plot <- ggplot(Touches_per_match, aes(x = TouchCount)) +
   geom_histogram(binwidth = 5, fill = "gray60", color = "white") +
   labs(
-    title = "Distribution of Touches per Game Across All Teams",
-    x = "Touches Per Game",
-    y = "Number of Matches"
+    title = "Touches per Match Across Entire Season",
+    x = "Touch Instances by Team per Match",
+    y = "Number of Matches (182 in Total)"
   ) +
-  theme_minimal()
+  theme(
+    text = element_text(family = "Times New Roman", size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 11),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray85"),
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank()
+  )
 
 #Check normalacy
 
@@ -301,25 +311,51 @@ touches_per_match_parametric <- shapiro.test(Touches_per_match$TouchCount)
 FinalStandings <- FinalStandings %>%
   mutate(TeamID = str_pad(as.character(TeamID), width = 2, pad = "0"))
 
+#Add R1, R2 etc for team rank/labeling
+FinalStandings <- FinalStandings %>%
+  mutate(
+    TeamID = str_pad(as.character(TeamID), width = 2, pad = "0"),
+    RankLabel = paste0("R", Rank)
+  )
+
 Touches_per_match_team <- Touches_per_match %>%
-  left_join(FinalStandings %>% select(TeamID, Team), 
+  left_join(FinalStandings %>% select(TeamID, Team, RankLabel, Rank), 
             by = c("Team" = "TeamID")) %>%
-  mutate(TeamLabel = paste0(Team, ": ", Team))
+  mutate(TeamLabel = RankLabel)
+
+Touches_per_match_team <- Touches_per_match_team %>%
+  mutate(TeamLabel = forcats::fct_reorder(TeamLabel, Rank))
 
 touches_permatch_plot_teamlevel <- ggplot(Touches_per_match_team, aes(x = TouchCount)) +
   geom_histogram(binwidth = 5, fill = "gray60", color = "white") +
-  facet_wrap(~ TeamLabel, scales = "fixed") +
+  facet_wrap2(
+    ~ TeamLabel,
+    nrow = 2, ncol = 7,
+    axes = "all",  # ← This is what forces axes on all facets
+    strip.position = "top"
+  ) +
   scale_y_continuous(
     limits = c(0, 10),
-    breaks = c(0, 5, 10)  # Only these tick marks shown
+    breaks = c(0, 5, 10)
   ) +
   labs(
-    title = "Touches Per Game by Team (each team played 26 matches)",
-    x = "Touches Per Game",
-    y = "Number of Matches"
+    title = "Touches per Match Across Season by Team",
+    x = "Touches per Match",
+    y = "Number of Matches (26 matches per team)"
   ) +
-  theme_minimal() +
-  theme(strip.text = element_text(size = 10))
+  theme_minimal(base_family = "Times New Roman") +
+  theme(
+    text = element_text(family = "Times New Roman", size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    strip.text = element_text(size = 11, face = "bold"),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray85"),
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank()
+  )
+
 
 #Ridgeline Plot
 #Stacked Density plot for each team
@@ -341,17 +377,30 @@ Touches_per_game_ranked <- Touches_per_match %>%
   arrange(Rank) %>%
   mutate(Rank = as.factor(Rank))
 
+Touches_per_game_ranked$Rank <- as.numeric(as.character(Touches_per_game_ranked$Rank))
+
 #Same thing but ordered by final rank
 # Visualize with boxplots 
 TouchesPerGame_vs_rank <- ggplot(Touches_per_game_ranked, aes(x = Rank, y = TouchCount, group = Rank)) +
-  geom_boxplot(fill = "lightblue", color = "black") +
-  scale_x_reverse(breaks = 1:14) +  # clean 1–14 axis
+  geom_boxplot(fill = "gray80", color = "black", outlier.shape = 16, outlier.size = 2) +
+  scale_x_reverse(breaks = 1:14) +
   labs(
-    title = "Variation of Within-Team Touch Frequency per Game",
-    x = "Team (Ordered by Final Rank)",
-    y = "Touches per Game"
+    title = "Variation of Within-Team Touch Frequency per Match",
+    x = "Team (Ordered by Final Season Rank)",
+    y = "Touches per Match"
   ) +
-  theme_minimal()
+  theme_minimal(base_family = "Times New Roman") +
+  theme(
+    text = element_text(family = "Times New Roman", size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray85"),
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank()
+  )
+
 
 ############### Scaling by team #####################################
 
@@ -428,29 +477,27 @@ outcome_summary <- Touches_per_match_outliers %>%
   mutate(proportion = count / sum(count))
 
 match_outcomes_outliers <- ggplot(outcome_summary, aes(x = OutlierStatus, y = proportion, fill = Outcome)) +
-  geom_col(position = "dodge") +
-  geom_text(aes(label = count), position = position_dodge(0.9), vjust = -0.25) +
+  geom_col(position = "dodge", width = 0.7) +
+  geom_text(aes(label = paste0(round(proportion * 100), "% (n=", count, ")")),
+            position = position_dodge(0.7), vjust = -0.5, size = 3, family = "Times New Roman") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   labs(
     title = "Match Outcomes by Outlier Status",
+    subtitle = "Only 9 matches classified as outliers; remaining 171 are normal",
     x = "Match Type",
-    y = "Proportion"
+    y = "Outcome Proportion"
   ) +
-  theme_minimal()
+  theme_minimal(base_family = "Times New Roman") +
+  theme(
+    text = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(size = 11, hjust = 0.5),
+    axis.text = element_text(size = 10)
+  )
 
-table_outcomes <- table(Touches_per_match_outliers$OutlierStatus, Touches_per_match_outliers$Outcome)
-
-library(knitr)
-
-# Create the summary table of counts by OutlierStatus and Outcome
-outcome_summary_table <- Touches_per_match_outliers %>%
-  group_by(OutlierStatus, Outcome) %>%
-  summarise(Count = n(), .groups = "drop") %>%
-  tidyr::pivot_wider(names_from = Outcome, values_from = Count, values_fill = 0)
-
-# Display nicely formatted table in R Markdown
-kable(outcome_summary_table, caption = "Match Outcomes by Outlier Status")
-
-fisher_res <- fisher.test(table_outcomes)
+# Contingency table
+outcome_table <- table(Touches_per_match_outliers$OutlierStatus, Touches_per_match_outliers$Outcome)
+fisher_test <- fisher.test(outcome_table)
 
 #Extreme touch events seem to propose a different match outcome. Dive into match level analysis.
 
