@@ -203,3 +203,53 @@ summary(model_interaction)
 
 model_interaction %>% tbl_regression()
 
+######## Scaled Half Analysis #######
+
+Touches_per_firsthalf_Scaled <- Touch_FirstHalf_GoalDiff_Analysis %>%
+  group_by(Team) %>%
+  mutate(
+    median_touch = median(TouchCount, na.rm = TRUE),
+    iqr_touch = IQR(TouchCount, na.rm = TRUE),
+    ScaledTouch = (TouchCount - median_touch) / iqr_touch
+  ) %>%
+  ungroup()
+
+Touches_per_secondhalf_Scaled <- Touch_SecondHalf_GoalDiff_Analysis %>%
+  group_by(Team) %>%
+  mutate(
+    median_touch = median(TouchCount, na.rm = TRUE),
+    iqr_touch = IQR(TouchCount, na.rm = TRUE),
+    ScaledTouch = (TouchCount - median_touch) / iqr_touch
+  ) %>%
+  ungroup()
+
+Touches_per_firsthalf_Scaled <- Touches_per_firsthalf_Scaled %>%
+  mutate(Half = "First")
+
+Touches_per_secondhalf_Scaled <- Touches_per_secondhalf_Scaled %>%
+  mutate(Half = "Second")
+
+Touch_HalfComparison_Scaled <- bind_rows(
+  Touches_per_firsthalf_Scaled,
+  Touches_per_secondhalf_Scaled
+) %>%
+  mutate(Half = factor(Half, levels = c("First", "Second")))
+
+Touch_HalfComparison_ScaledPlot <- ggplot(Touch_HalfComparison_Scaled, aes(x = ScaledTouch, y = GoalDiff, color = Half)) +
+  geom_point(alpha = 0.6, size = 2) +
+  geom_smooth(method = "lm", se = FALSE, size = 1.2) +
+  scale_color_manual(
+    values = c("First" = "steelblue", "Second" = "firebrick"),
+    labels = c("First Half", "Second Half")
+  ) +
+  labs(
+    title = "Scaled Touch Count vs Goal Differential by Match Half",
+    x = "Scaled Touch Count (per team IQR)",
+    y = "Goal Differential",
+    color = "Match Half"
+  ) +
+  theme_minimal()
+
+model_scaled_interaction <- lm(GoalDiff ~ ScaledTouch * Half, data = Touch_HalfComparison_Scaled)
+summary(model_scaled_interaction)
+

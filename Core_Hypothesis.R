@@ -10,6 +10,10 @@ library(rmarkdown)
 library(readr)
 library(dplyr)
 library(ggrepel)
+library(ggplot2)
+library(extrafont)     # Optional for font registration on some systems
+library(showtext)      # Better font support across systems
+
 
 
 source("Overview_Summary_Data.R") #Runs and brings in data frames
@@ -25,6 +29,13 @@ Touches_by_team <- Touches_CoreData %>%
 FinalStandings <- FinalStandings %>%
   mutate(TeamID = str_pad(as.character(TeamID), width = 2, pad = "0"))
 
+#Add R1, R2 etc for team rank/labeling
+FinalStandings <- FinalStandings %>%
+  mutate(
+    TeamID = str_pad(as.character(TeamID), width = 2, pad = "0"),
+    RankLabel = paste0("R", Rank)
+  )
+
 #Join touch counts with final standings
 Team_Touches_Standings <- FinalStandings %>%
   left_join(Touches_by_team, by = c("TeamID" = "Team")) %>%
@@ -34,15 +45,24 @@ Team_Touches_Standings <- FinalStandings %>%
 
 TouchFreq_vs_FinalStandings <- ggplot(Team_Touches_Standings, aes(x = Rank, y = TotalTouches)) +
   geom_point(size = 3, color = "gray30") +
-  geom_text_repel(aes(label = Team), size = 3.5, max.overlaps = Inf) +  # ← Team names
-  geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1) +
+  geom_text_repel(aes(label = RankLabel), size = 3.5, max.overlaps = Inf, family = "Times New Roman") +
+  geom_smooth(method = "lm", se = FALSE, color = "gray40", linewidth = 1) +
   scale_x_reverse(breaks = 1:14) +
   labs(
-    title = "Final Rank vs Overall Touch Frequency",
-    x = "Final Season Rank (1 = Best)",
-    y = "Total Touches (Filtered)"
+    title = "Season-Level: Touch Frequency vs End of Season Rank",
+    x = "End of Season Rank (Best = 1)",
+    y = "Total Season Touch Instances by Team"
   ) +
-  theme_minimal()
+  theme(
+    text = element_text(family = "Times New Roman", size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 11),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray85"),
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank()
+  )
 
 Team_Touches_Standings <- Team_Touches_Standings %>%
   mutate(
@@ -50,51 +70,15 @@ Team_Touches_Standings <- Team_Touches_Standings %>%
     TotalTouches = as.numeric(TotalTouches)
   )
 
+# Shapiro-Wilk test for normality
+shapiro.test(Team_Touches_Standings$TotalTouches)  # for total touches
+# Failed to reject, therefore Normal distribution 
+
 #relationshp testing
 totalseason_lineaermodel <- lm(TotalTouches ~ Rank, data = Team_Touches_Standings)
 totalseason_pearson <- cor.test(Team_Touches_Standings$Rank, Team_Touches_Standings$TotalTouches, method = "pearson")
 
 ##### Nothing of interest found. There does not appear to be a relationship between end of season rank and filtered data
-
-#possibly something with unfiltered? Should I not have filtered?
-
-# Step 2: Use the "unfiltered" dataframe that already contains total touches per team
-# Rename for consistency
-Touches_by_team_unfiltered <- unfiltered %>%
-  rename(TotalTouches = `Total Season Touches`)
-
-Team_Touches_Standings_unfiltered <- FinalStandings %>%
-  left_join(Touches_by_team_unfiltered, by = c("TeamID" = "TeamID")) %>%
-  filter(!is.na(TotalTouches))
-
-TouchFreq_vs_FinalStandings_unfiltered <- ggplot(Team_Touches_Standings_unfiltered, aes(x = Rank, y = TotalTouches)) +
-  geom_point(size = 3, color = "gray30") +
-  geom_text_repel(aes(label = Team), size = 3.5, max.overlaps = Inf) +
-  geom_smooth(method = "lm", se = FALSE, color = "blue", linewidth = 1) +
-  scale_x_reverse(breaks = 1:14) +
-  labs(
-    title = "Final Rank vs Overall Touch Frequency (Unfiltered)",
-    x = "Final Season Rank (1 = Best)",
-    y = "Total Touches (Unfiltered)"
-  ) +
-  theme_minimal()
-
-Team_Touches_Standings_unfiltered <- Team_Touches_Standings_unfiltered %>%
-  mutate(
-    Rank = as.numeric(Rank),
-    TotalTouches = as.numeric(TotalTouches)
-  )
-
-totalseason_lineaermodel_unfiltered <- lm(TotalTouches ~ Rank, data = Team_Touches_Standings_unfiltered)
-totalseason_lineaermodel_unfiltered_summary <- summary(totalseason_lineaermodel_unfiltered)
-
-totalseason_pearson_unfiltered <- cor.test(
-  Team_Touches_Standings_unfiltered$Rank,
-  Team_Touches_Standings_unfiltered$TotalTouches,
-  method = "pearson"
-)
-
-#confirmed that there is not even statistical significance when looking at unfiltered data... goals etc don't matter
 
 ############################ Within-Team Variability in Touch Frequency ############################ 
 

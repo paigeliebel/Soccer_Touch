@@ -8,6 +8,11 @@ library(janitor)
 library(readxl)
 library(rmarkdown)
 library(readr)
+library(extrafont)
+library(ggplot2)
+
+theme_set(theme_minimal(base_family = "Times New Roman"))
+
 
 ################################################################
 
