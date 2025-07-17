@@ -15,7 +15,7 @@ library(ggsignif)
 library(purrr)
 library(patchwork)
 library(fuzzyjoin)
-
+library(scales)
 
 
 # Load data and prior processing
@@ -201,12 +201,26 @@ Histogram_TouchesTime_PercentTime <- ggplot(Touches_PlayerHyp_binned, aes(x = Pe
 
 # Plot histogram + smooth trend line (LOESS)
 histogram_smoothline <- ggplot(Touches_PlayerHyp_binned, aes(x = PercentBin, y = TouchCount)) +
-  geom_col(fill = "steelblue", color = "black", width = 0.01) +  # Histogram bars
-  geom_smooth(method = "loess", se = FALSE, color = "red", size = 1.2, span = 0.3) +  # Smooth line
-  labs(title = "Total Match Touches from both Teams by % of Match Completion (Smoothed via LOESS)",
-       x = "% of Match Completion",
-       y = "Number of Touches") +
-  theme_minimal()
+  geom_col(fill = "gray65", color = "white", width = 0.01) +  # Histogram bars
+  geom_smooth(method = "loess", se = FALSE, color = "black", size = 1.2, span = 0.3) +  # LOESS line
+  scale_x_continuous(labels = percent_format(accuracy = 1)) +  # Format x-axis as %
+  labs(
+    title = "Touch Frequency over Course of Match",
+    x = "Percent of Match Completion",
+    y = "Touch Count (Sum of Both Teams)"
+  ) +
+  theme_minimal(base_family = "Times New Roman") +
+  theme(
+    text = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray85"),
+    axis.line = element_line(color = "black"),
+    panel.border = element_blank()
+  )
+
 
 #Plots by outcome, W, D, L
 # Merge outcome with touch data
@@ -332,15 +346,30 @@ wilcox.test(baseline_touch_counts$Diff, mu = 0, alternative = "greater")
 
 combined_plot <- ggplot(touches_binned_filtered, aes(x = PercentBin, y = TouchCount, color = Outcome)) +
   geom_smooth(method = "loess", se = FALSE, span = 0.7, size = 1.2) +
-  geom_vline(xintercept = avg_first_goal_percent, linetype = "dashed", color = "black") +
+  scale_color_manual(
+    values = c("W" = "steelblue4", "L" = "indianred3"),
+    labels = c("W" = "Win", "L" = "Loss")
+  ) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +  # Format x-axis as percentages
   labs(
-    title = paste0("Touch Frequency over the Course of Match \n (Dashed Line = Avg 1st Goal Occurs at ", round(avg_first_goal_percent * 100), "%)"),
-    x = "% of Match Completion",
+    title = "Touch Frequency over the Course of Match: \n Split by Match Outcome for Team",
+    x = "Percent of Match Completion",
     y = "Touch Count",
     color = "Match Outcome"
   ) +
-  theme_minimal() +
-  scale_color_manual(values = c("W" = "blue", "L" = "red"))
+  theme_minimal(base_family = "Times New Roman") +
+  theme(
+    text = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray85"),
+    axis.line = element_line(color = "black")
+  )
+
 
 # Refined Hypothesis: Matches that end in wins are characterized by higher touch rates early in the match compared to matches that end in losses.
 

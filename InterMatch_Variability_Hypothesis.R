@@ -296,7 +296,14 @@ Touch_HalfComparison_Scaled <- bind_rows(
 ) %>%
   mutate(Half = factor(Half, levels = c("First", "Second")))
 
-Touch_HalfComparison_ScaledPlot <- ggplot(Touch_HalfComparison_Scaled, aes(x = ScaledTouch, y = GoalDiff, color = Half)) +
+Touch_HalfComparison_Scaled <- bind_rows(
+  Touches_per_firsthalf_Scaled,
+  Touches_per_secondhalf_Scaled
+) %>%
+  mutate(Half = factor(Half, levels = c("First", "Second")))
+
+
+Touch_HalfComparison_ScaledPlot <- ggplot(Touch_HalfComparison_Scaled, aes(x = ScaledTouch, y = GoalDiff, color = factor(Half))) +
   geom_point(alpha = 0.6, size = 2) +
   geom_smooth(method = "lm", se = FALSE, size = 1.2) +
   scale_color_manual(
@@ -304,13 +311,27 @@ Touch_HalfComparison_ScaledPlot <- ggplot(Touch_HalfComparison_Scaled, aes(x = S
     labels = c("First Half", "Second Half")
   ) +
   labs(
-    title = "Scaled Touch Count vs Goal Differential by Match Half",
-    x = "Scaled Touch Count (per team IQR)",
+    title = "Half-Level: Goal Differential vs SCALED Touch Frequency",
+    x = "Within-Team Scaled Touch Frequency (Median/IQR Normalized)",
     y = "Goal Differential",
     color = "Match Half"
   ) +
-  theme_minimal()
+  theme_minimal(base_family = "Times New Roman") +
+  theme(
+    text = element_text(size = 12),
+    plot.title = element_text(size = 14, face = "bold", hjust = 0.5),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    legend.title = element_text(size = 11),
+    legend.text = element_text(size = 10),
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(color = "gray85"),
+    axis.line = element_line(color = "black")
+  )
 
-model_scaled_interaction <- lm(GoalDiff ~ ScaledTouch * Half, data = Touch_HalfComparison_Scaled)
-summary(model_scaled_interaction)
 
+lm_first <- lm(GoalDiff ~ ScaledTouch, data = filter(Touch_HalfComparison_Scaled, Half == "First"))
+lm_second <- lm(GoalDiff ~ ScaledTouch, data = filter(Touch_HalfComparison_Scaled, Half == "Second"))
+
+summary(lm_first)
+summary(lm_second)
