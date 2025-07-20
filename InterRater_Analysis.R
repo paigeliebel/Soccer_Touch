@@ -15,6 +15,7 @@ library(dplyr)
 library(irr)
 library(fuzzyjoin)
 library(knitr)
+library(psych)
 
 
 source("Data_Management.R") #Runs and brings in Matches_final from Data_Management.R script
@@ -212,10 +213,14 @@ icc_data_total <- Touches_interrater %>%
   summarise(Count = n(), .groups = "drop") %>%
   pivot_wider(names_from = Rater, values_from = Count)
 
-# Already done earlier:
-icc_result_total <- icc(icc_data_total[,-1], model = "twoway", type = "agreement", unit = "single")
-icc_result_recip <- icc(icc_data_recip[,-1], model = "twoway", type = "agreement", unit = "single")
-icc_result_nonrecip <- icc(icc_data_nonrecip[,-1], model = "twoway", type = "agreement", unit = "single")
+# icc_result_total <- icc(icc_data_total[,-1], model = "twoway", type = "agreement", unit = "single")
+# icc_result_recip <- icc(icc_data_recip[,-1], model = "twoway", type = "agreement", unit = "single")
+# icc_result_nonrecip <- icc(icc_data_nonrecip[,-1], model = "twoway", type = "agreement", unit = "single")
+
+# ICC(3,1): 
+icc_result_total <- ICC(icc_data_total[,-1])
+icc_result_recip <- ICC(icc_data_recip[,-1])
+icc_result_nonrecip <- ICC(icc_data_nonrecip[,-1])
 
 # Extract results into a data frame
 icc_summary <- tibble(
