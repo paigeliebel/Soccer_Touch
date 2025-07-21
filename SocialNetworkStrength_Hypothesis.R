@@ -15,12 +15,19 @@ library(ggplot2)
 library(forcats)
 library(ggridges)
 library(DescTools)
+library(dplyr)
+library(ggplot2)
+library(ggridges)
+library(ggrepel)
 
 source("Data_Management.R") #Runs and brings in data frames from Data_Management.R script
 source("Overview_summary_Data.R") #Runs and brings in data frames from Core_Hypothesis.R script
 source("MatchPerformance_Stats_PK.R") #Runs abd brings in data frames from MatchPerformance and stats script
 
 ############################ Social Network Strength ############################
+
+FinalStandings <- FinalStandings %>%
+  mutate(RankLabel = paste0("R", Rank))
 
 #Creates Dataframe that Flags values that don't match with requirements of strings, jersey numbers, G, SU, ??
 #Cleans common typos (which were many)
@@ -116,6 +123,12 @@ touchee_counts <- Touches_players_final %>%
   filter(!is.na(ToucheeNumber) & ToucheeNumber != "G" & Reciprocal == "N") %>%
   group_by(Team, ToucheeNumber) %>%
   summarise(TouchCount = n(), .groups = "drop")
+
+touchee_count <- Touches_players_final %>%
+  filter(!is.na(ToucheeNumber) & ToucheeNumber != "G" & Reciprocal == "N")
+
+toucher_count <- Touches_players_final %>%
+  filter(!is.na(ToucherNumber) & ToucherNumber != "G" & Reciprocal == "N")
 
 Touchee_histo <- ggplot(touchee_counts, aes(x = ToucheeNumber, y = TouchCount)) +
   geom_col(fill = "steelblue") +
@@ -272,6 +285,12 @@ player_counts <- Touches_players_final %>%
   group_by(Team, PlayersInvolved) %>%
   summarise(TouchCount = n(), .groups = "drop")
 
+FinalStandings <- FinalStandings %>%
+  mutate(TeamID = as.numeric(TeamID))
+
+player_counts <- player_counts %>%
+  mutate(Team = as.numeric(Team))
+
 # Step 2: Join with RankLabels
 player_counts <- player_counts %>%
   left_join(FinalStandings %>% select(TeamID, Rank, RankLabel), by = c("Team" = "TeamID"))
@@ -338,9 +357,7 @@ player_involved_ridgeplot <- ggplot(player_counts, aes(x = TouchCount, y = Team,
   theme(legend.position = "none")
 
 #What Anne asked for:
-library(dplyr)
-library(ggplot2)
-library(ggridges)
+
 
 # Step 1: Keep top 18 players by TotalSecondsPlayed per team
 top_players_by_minutes <- player_season_totals %>%
@@ -349,6 +366,9 @@ top_players_by_minutes <- player_season_totals %>%
   slice_head(n = 18) %>%
   ungroup() %>%
   select(TeamID, Player)
+
+top_players_by_minutes <- top_players_by_minutes %>%
+  mutate(TeamID = as.numeric(TeamID))
 
 # Step 2: Join with player_counts to keep only those top 18 players per team
 player_counts_top18 <- player_counts %>%
